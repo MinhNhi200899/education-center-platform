@@ -88,6 +88,7 @@ export class AuthService {
       where: { email },
       include: {
         center: true,
+        student: { select: { id: true } },
         userRoles: {
           include: {
             role: {
@@ -439,6 +440,7 @@ export class AuthService {
       where: { id: userId },
       include: {
         center: true,
+        student: { select: { id: true } },
         userRoles: {
           include: {
             role: {
@@ -551,6 +553,7 @@ export class AuthService {
       centerId: user.centerId,
       status: user.status,
       roles: user.userRoles.map((ur: any) => ur.role.name),
+      studentId: user.student?.id ?? null,
       center: user.center
         ? {
             id: user.center.id,

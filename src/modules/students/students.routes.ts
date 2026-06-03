@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { studentsController } from './students.controller';
 import { authenticate } from '../auth/middleware/authenticate';
 import { requirePermission, requireAnyPermission } from '../rbac/middleware/require-permission';
+import { requireStudentRead } from './middleware/require-student-read';
 import { validateRequest } from '../../shared/middleware/validate-request';
 import {
   createStudentSchema,
@@ -63,7 +64,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requirePermission('students.read'),
+  requireStudentRead,
   validateRequest({ params: studentIdSchema }),
   studentsController.getStudentById
 );

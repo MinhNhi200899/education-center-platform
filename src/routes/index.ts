@@ -12,6 +12,7 @@ import reportsRoutes from '../modules/reports/reports.routes';
 import sessionsRoutes from '../modules/sessions/sessions.routes';
 import scheduleRoutes from '../modules/schedule/schedule.routes';
 import centersRoutes from '../modules/centers/centers.routes';
+import portalRoutes from '../modules/portal/portal.routes';
 
 const router = Router();
 
@@ -61,5 +62,8 @@ router.use('/reports', reportsRoutes);
 
 // Centers routes (payment settings, etc.)
 router.use('/centers', centersRoutes);
+
+// Student portal (self-service)
+router.use('/portal', portalRoutes);
 
 export default router;

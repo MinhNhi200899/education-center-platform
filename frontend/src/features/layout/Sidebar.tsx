@@ -12,8 +12,10 @@ import {
   IconReport,
   IconShield,
   IconQrcode,
+  IconHome,
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStudentUser } from '@/lib/roles';
 
 interface NavItem {
   label: string;
@@ -22,8 +24,14 @@ interface NavItem {
   roles?: string[];
 }
 
+const studentNavItems: NavItem[] = [
+  { label: 'Trang chủ', icon: IconHome, path: '/portal' },
+  { label: 'Lịch học của tôi', icon: IconCalendarEvent, path: '/portal/schedule' },
+  { label: 'Học phí & thông báo', icon: IconReceipt, path: '/portal/tuition' },
+];
+
 const navItems: NavItem[] = [
-  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard' },
+  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard', roles: ['super_admin', 'center_manager', 'teacher'] },
   { label: 'Students', icon: IconUsers, path: '/students', roles: ['super_admin', 'center_manager'] },
   { label: 'Teachers', icon: IconUser, path: '/teachers', roles: ['super_admin', 'center_manager'] },
   { label: 'Classes', icon: IconSchool, path: '/classes', roles: ['super_admin', 'center_manager', 'teacher'] },
@@ -39,10 +47,12 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const filteredNavItems = navItems.filter((item) => {
-    if (!item.roles) return true;
-    return user?.roles?.some((role) => item.roles?.includes(role));
-  });
+  const filteredNavItems = isStudentUser(user)
+    ? studentNavItems
+    : navItems.filter((item) => {
+        if (!item.roles) return true;
+        return user?.roles?.some((role) => item.roles?.includes(role));
+      });
 
   return (
     <Stack p="md" gap="xs">

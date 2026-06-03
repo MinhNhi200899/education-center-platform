@@ -48,6 +48,15 @@ import { SchedulePage } from '@/features/schedule/pages/SchedulePage';
 // Settings
 import { PaymentSettingsPage, RolesPage } from '@/features/settings';
 
+// Student portal
+import {
+  StudentHomePage,
+  StudentSchedulePage,
+  StudentTuitionPage,
+  StudentInvoiceDetailPage,
+} from '@/features/portal';
+import { isStudentUser, getHomePath } from '@/lib/roles';
+
 // Protected route wrapper
 function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,10 +80,30 @@ function RoleRoute({ roles }: { roles: string[] }) {
 
   const hasRole = user.roles.some((role) => roles.includes(role));
   if (!hasRole) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={isStudentUser(user) ? '/portal' : '/dashboard'} replace />;
   }
 
   return <Outlet />;
+}
+
+function StudentOnlyRoute() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isStudentUser(user)) return <Navigate to="/dashboard" replace />;
+  return <Outlet />;
+}
+
+function StaffOnlyRoute() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (isStudentUser(user)) return <Navigate to="/portal" replace />;
+  return <Outlet />;
+}
+
+function HomeRedirect() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={getHomePath(user)} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -91,8 +120,28 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          // Dashboard
-          { index: true, element: <DashboardPage /> },
+          // Home redirect
+          {
+            index: true,
+            element: <HomeRedirect />,
+          },
+
+          // Student portal
+          {
+            path: 'portal',
+            element: <StudentOnlyRoute />,
+            children: [
+              { index: true, element: <StudentHomePage /> },
+              { path: 'schedule', element: <StudentSchedulePage /> },
+              { path: 'tuition', element: <StudentTuitionPage /> },
+              { path: 'tuition/:id', element: <StudentInvoiceDetailPage /> },
+            ],
+          },
+
+          // Staff dashboard
+          {
+            element: <StaffOnlyRoute />,
+            children: [
           {
             path: 'dashboard',
             element: <DashboardPage />,
@@ -208,6 +257,8 @@ export const router = createBrowserRouter([
             children: [
               { path: 'payments', element: <PaymentSettingsPage /> },
               { path: 'roles', element: <RolesPage /> },
+            ],
+          },
             ],
           },
         ],

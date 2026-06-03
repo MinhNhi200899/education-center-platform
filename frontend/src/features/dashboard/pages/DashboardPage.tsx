@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { isStudentUser } from '@/lib/roles';
 import {
   Grid,
   Card,
@@ -75,6 +78,15 @@ function StatCard({
 }
 
 export function DashboardPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isStudentUser(user)) {
+      navigate('/portal', { replace: true });
+    }
+  }, [user, navigate]);
+
   const now = new Date();
   const [filters, setFilters] = useState<RevenueFilterValues>({
     year: now.getFullYear(),

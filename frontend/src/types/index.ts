@@ -1,5 +1,5 @@
 // User roles
-export type UserRole = 'super_admin' | 'center_manager' | 'teacher' | 'parent';
+export type UserRole = 'super_admin' | 'center_manager' | 'teacher' | 'parent' | 'student';
 
 // User type
 export interface User {
@@ -8,6 +8,7 @@ export interface User {
   phone?: string;
   status: 'active' | 'inactive' | 'locked';
   roles: UserRole[];
+  studentId?: string | null;
   centerId?: string;
   center?: {
     id: string;

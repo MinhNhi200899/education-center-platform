@@ -50,6 +50,7 @@ export interface UserResponse {
   centerId: string | null;
   status: UserStatus;
   roles: string[];
+  studentId?: string | null;
   center?: CenterInfo | null;
   createdAt: Date;
 }

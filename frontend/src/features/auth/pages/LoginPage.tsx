@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Card, TextInput, PasswordInput, Button, Title, Text, Stack, Alert } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getHomePath } from '@/lib/roles';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,8 +19,8 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const loggedInUser = await login(email, password);
+      navigate(getHomePath(loggedInUser));
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
     } finally {

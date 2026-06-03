@@ -1,0 +1,799 @@
+// ============================================================
+// Prisma Schema for Education Center Management Platform
+// Database: PostgreSQL 15+
+// ORM: Prisma 5.x
+// Generated: 2026-06-03
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+// User status for authentication
+enum UserStatus {
+  active    // User can log in
+  inactive  // User account disabled
+  locked    // Account locked due to failed attempts
+}
+
+// Gender enum for students and teachers
+enum Gender {
+  male
+  female
+  other
+}
+
+// Student enrollment status
+enum StudentStatus {
+  active    // Currently enrolled
+  inactive  // Temporarily suspended
+  archived  // Withdrawn/permanently left
+}
+
+// Teacher employment status
+enum TeacherStatus {
+  active      // Currently teaching
+  inactive    // On leave or paused
+  terminated  // No longer employed
+}
+
+// Academic level for classes
+enum AcademicLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+// Class lifecycle status
+enum ClassStatus {
+  active     // Currently running
+  inactive   // Paused or not yet started
+  completed  // Finished normally
+  archived   // Archived for records
+}
+
+// Teacher assignment role in a class
+enum TeacherRole {
+  primary    // Main teacher for the class
+  substitute // Backup/replacement teacher
+}
+
+// Enrollment status
+enum EnrollmentStatus {
+  active     // Currently enrolled
+  completed  // Finished the class
+  withdrawn  // Left before completion
+}
+
+// Session type for scheduling
+enum SessionType {
+  regular  // Normal scheduled session
+  makeup   // Make-up session for cancelled class
+  trial    // Trial/demo session
+}
+
+// Session status
+enum SessionStatus {
+  scheduled // Future session
+  completed // Session conducted
+  cancelled // Session cancelled
+}
+
+// Attendance status
+enum AttendanceStatus {
+  present  // Student attended
+  absent   // Student did not attend
+  late     // Student arrived after start time
+  excused  // Absence approved with reason
+}
+
+// Evaluation type
+enum EvaluationType {
+  daily   // Per session evaluation
+  weekly  // Week summary
+  monthly // Month comprehensive
+  term    // Full term summary
+}
+
+// Billing cycle for tuition plans
+enum BillingCycle {
+  monthly   // Billed monthly
+  quarterly // Billed every 3 months
+  term     // Per academic term
+  yearly   // Billed annually
+}
+
+// Invoice status
+enum InvoiceStatus {
+  draft     // Not yet issued
+  issued    // Sent to parent
+  paid      // Payment received
+  overdue   // Past due date, unpaid
+  cancelled // Cancelled invoice
+}
+
+// Payment method
+enum PaymentMethod {
+  cash          // Cash payment
+  bank_transfer // Bank transfer
+  vietqr        // VietQR payment
+}
+
+// Payment status
+enum PaymentMethodStatus {
+  pending   // Awaiting confirmation
+  completed // Successfully processed
+  failed    // Payment failed
+}
+
+// Parent relationship to student
+enum ParentRelationship {
+  father
+  mother
+  guardian
+  other
+}
+
+// Audit action types
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXPORT
+}
+
+// ============================================================
+// PLATFORM CORE
+// ============================================================
+
+// Education Center - Top-level tenant entity
+model Center {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(200)
+  code      String   @unique @db.VarChar(50) // e.g., "HCM01"
+  address   String?  @db.Text
+  phone     String?  @db.VarChar(20)
+  email     String?  @db.VarChar(255)
+  logoUrl   String?  @db.VarChar(500)
+  timezone  String   @default("Asia/Ho_Chi_Minh") @db.VarChar(50)
+  settings  Json     @default("{}")
+  status    String   @default("active") // active, inactive
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations - One center has many...
+  users        User[]
+  userRoles    UserRole[]
+  students     Student[]
+  teachers     Teacher[]
+  classes      Class[]
+  tuitionPlans TuitionPlan[]
+  invoices     Invoice[]
+  auditLogs    AuditLog[]
+  absenceReasons AbsenceReason[]
+
+  @@index([status])
+  @@index([code])
+}
+
+// Platform User - authentication and authorization
+model User {
+  id              String    @id @default(uuid())
+  centerId        String?   // NULL for platform admins
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  status          UserStatus @default(active)
+  lastLoginAt     DateTime?
+  lastLoginIp     String?   @db.VarChar(45)
+  failedLoginCount Int      @default(0)
+  lockedUntil     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  center          Center?        @relation(fields: [centerId], references: [id], onDelete: SetNull)
+  student         Student?
+  teacher         Teacher?
+  parent          Parent?
+  refreshTokens   RefreshToken[]
+  passwordResets  PasswordReset[]
+  notifications   Notification[]
+  userRoles       UserRole[]
+  auditLogs       AuditLog[]
+  sessions        Session[]      @relation("SessionTeacher")
+  recordedAttendances AttendanceRecord[] @relation("RecordedBy")
+  approvedAttendances AttendanceRecord[] @relation("ApprovedBy")
+  approvedPayments Payment[]     @relation("ConfirmedBy")
+
+  @@index([centerId])
+  @@index([status])
+  @@index([email])
+}
+
+// ============================================================
+// AUTHENTICATION & TOKENS
+// ============================================================
+
+// JWT Refresh Tokens
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @db.VarChar(255)
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+// Password Reset Tokens
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @db.VarChar(255)
+  expiresAt DateTime
+  usedAt    DateTime?
+  ipAddress String?   @db.VarChar(45)
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// ============================================================
+// STUDENT MANAGEMENT
+// ============================================================
+
+// Student Record
+model Student {
+  id              String        @id @default(uuid())
+  userId          String?       @unique // Optional link for parent portal access
+  centerId        String
+  fullName        String        @db.VarChar(100)
+  dateOfBirth     DateTime      @db.Date
+  gender          Gender
+  phone           String?       @db.VarChar(20)
+  email           String?       @db.VarChar(255)
+  address         String?       @db.Text
+  avatarUrl       String?       @db.VarChar(500)
+  enrollmentDate  DateTime      @db.Date
+  status          StudentStatus @default(active)
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  center          Center        @relation(fields: [centerId], references: [id])
+  parents         Parent[]
+  enrollments     Enrollment[]
+  invoices        Invoice[]
+  evaluations     Evaluation[]
+  attendanceRecords AttendanceRecord[]
+
+  @@index([centerId])
+  @@index([status])
+  @@index([fullName])
+  @@index([enrollmentDate])
+  @@index([dateOfBirth])
+}
+
+// Parent/Guardian Record
+model Parent {
+  id              String            @id @default(uuid())
+  userId          String?           @unique // Optional link for parent portal access
+  studentId       String
+  fullName        String            @db.VarChar(100)
+  relationship    ParentRelationship
+  phone           String            @db.VarChar(20)
+  email           String?           @db.VarChar(255)
+  occupation      String?           @db.VarChar(100)
+  address         String?           @db.Text
+  isPrimary       Boolean          @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  student         Student           @relation(fields: [studentId], references: [id])
+
+  @@index([studentId])
+  @@index([phone])
+  @@index([email])
+}
+
+// ============================================================
+// TEACHER MANAGEMENT
+// ============================================================
+
+// Teacher Profile
+model Teacher {
+  id              String       @id @default(uuid())
+  userId          String?      @unique // Optional link for teacher portal access
+  centerId        String
+  fullName        String       @db.VarChar(100)
+  dateOfBirth     DateTime     @db.Date
+  gender          Gender
+  phone           String       @db.VarChar(20)
+  email           String       @db.VarChar(255)
+  address         String?      @db.Text
+  qualification   String?      @db.VarChar(200)
+  specialization  String?      @db.VarChar(200)
+  hireDate        DateTime     @db.Date
+  salary          Decimal?     @db.Decimal(12, 2)
+  status          TeacherStatus @default(active)
+  avatarUrl       String?      @db.VarChar(500)
+  notes           String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  center          Center       @relation(fields: [centerId], references: [id])
+  classTeachers   ClassTeacher[]
+  evaluations     Evaluation[]
+
+  @@index([centerId])
+  @@index([status])
+  @@index([email])
+  @@index([fullName])
+}
+
+// ============================================================
+// CLASS MANAGEMENT
+// ============================================================
+
+// Class Definition
+model Class {
+  id              String        @id @default(uuid())
+  centerId        String
+  name            String        @db.VarChar(100)
+  description     String?       @db.Text
+  academicLevel   AcademicLevel
+  capacity        Int
+  status          ClassStatus   @default(active)
+  classroom       String?       @db.VarChar(100)
+  schedule        Json          @default("{}") // Weekly schedule structure
+  startDate       DateTime      @db.Date
+  endDate         DateTime?     @db.Date
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  center          Center        @relation(fields: [centerId], references: [id])
+  classTeachers   ClassTeacher[]
+  enrollments     Enrollment[]
+  sessions        Session[]
+  evaluations     Evaluation[]
+  tuitionPlans    TuitionPlan[]
+
+  @@unique([centerId, name])
+  @@index([centerId])
+  @@index([status])
+  @@index([academicLevel])
+}
+
+// Class-Teacher Assignment (Junction Table)
+model ClassTeacher {
+  id          String      @id @default(uuid())
+  classId     String
+  teacherId   String
+  role        TeacherRole @default(primary)
+  assignedAt  DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, teacherId, role])
+  @@index([classId])
+  @@index([teacherId])
+}
+
+// Student-Class Enrollment
+model Enrollment {
+  id          String           @id @default(uuid())
+  studentId   String
+  classId     String
+  enrolledAt  DateTime         @default(now())
+  startDate   DateTime         @db.Date
+  endDate     DateTime?        @db.Date
+  status      EnrollmentStatus @default(active)
+  notes       String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  student         Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class           Class             @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([status])
+}
+
+// ============================================================
+// SCHEDULE & SESSIONS
+// ============================================================
+
+// Teaching Session
+model Session {
+  id           String        @id @default(uuid())
+  classId      String
+  teacherId    String
+  sessionDate  DateTime      @db.Date
+  startTime    String        @db.VarChar(5) // HH:MM format
+  endTime      String        @db.VarChar(5) // HH:MM format
+  classroom    String?       @db.VarChar(100)
+  sessionType  SessionType   @default(regular)
+  status       SessionStatus @default(scheduled)
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  class              Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher           User               @relation("SessionTeacher", fields: [teacherId], references: [id])
+  attendanceRecords AttendanceRecord[]
+  materials         SessionMaterial[]
+
+  @@index([classId])
+  @@index([teacherId])
+  @@index([sessionDate])
+  @@index([status])
+  @@index([classId, sessionDate])
+}
+
+// Session Learning Materials
+model SessionMaterial {
+  id          String   @id @default(uuid())
+  sessionId   String
+  fileUrl     String   @db.VarChar(500)
+  fileName    String   @db.VarChar(255)
+  fileType    String   @db.VarChar(100)
+  fileSize    Int
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// ============================================================
+// ATTENDANCE
+// ============================================================
+
+// Attendance Record
+model AttendanceRecord {
+  id          String            @id @default(uuid())
+  studentId   String
+  sessionId   String
+  status      AttendanceStatus
+  reason      String?           @db.VarChar(500)
+  recordedBy  String
+  recordedAt  DateTime         @default(now())
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session     Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  recordedByUser User      @relation("RecordedBy", fields: [recordedBy], references: [id])
+  approvedByUser User?     @relation("ApprovedBy", fields: [approvedBy], references: [id])
+
+  @@unique([studentId, sessionId])
+  @@index([studentId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([recordedAt])
+}
+
+// Absence Reasons (Reference Table)
+model AbsenceReason {
+  id           String   @id @default(uuid())
+  centerId     String?  // NULL for system-wide reasons
+  name         String   @db.VarChar(100)
+  description  String?  @db.Text
+  displayOrder Int      @default(0)
+  isSystem     Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  center Center? @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId])
+  @@index([isActive])
+  @@index([isSystem])
+}
+
+// ============================================================
+// EVALUATION
+// ============================================================
+
+// Student Evaluation
+model Evaluation {
+  id               String         @id @default(uuid())
+  studentId        String
+  classId          String
+  teacherId        String
+  evaluationType   EvaluationType
+  evaluationDate   DateTime       @db.Date
+  participation    Int?            // Rating 1-5
+  homework         Int?            // Rating 1-5
+  behavior         Int?            // Rating 1-5
+  scores           Json?           // Subject scores JSON
+  comments         String?        @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@index([studentId])
+  @@index([classId])
+  @@index([teacherId])
+  @@index([evaluationType])
+  @@index([evaluationDate])
+  @@index([studentId, classId, evaluationDate])
+}
+
+// ============================================================
+// TUITION & PAYMENTS
+// ============================================================
+
+// Tuition Plan
+model TuitionPlan {
+  id            String       @id @default(uuid())
+  centerId      String
+  classId       String?      // NULL for general plans, specific for class plans
+  name          String       @db.VarChar(100)
+  amount        Decimal      @db.Decimal(12, 2)
+  currency      String       @default("VND") @db.VarChar(3)
+  billingCycle  BillingCycle
+  dueDay        Int          // 1-28
+  lateFee       Decimal?     @db.Decimal(12, 2)
+  notes         String?      @db.Text
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  center   Center   @relation(fields: [centerId], references: [id])
+  class    Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  invoices Invoice[]
+
+  @@index([centerId])
+  @@index([classId])
+  @@index([isActive])
+}
+
+// Invoice
+model Invoice {
+  id              String        @id @default(uuid())
+  centerId        String
+  invoiceNumber   String        @unique @db.VarChar(50)
+  studentId       String
+  tuitionPlanId    String
+  amount          Decimal       @db.Decimal(12, 2)
+  discount        Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount     Decimal       @db.Decimal(12, 2)
+  status          InvoiceStatus @default(draft)
+  issueDate       DateTime      @db.Date
+  dueDate         DateTime      @db.Date
+  paidDate        DateTime?     @db.Date
+  paidAmount      Decimal?      @db.Decimal(12, 2)
+  paymentMethod   PaymentMethod?
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  center      Center       @relation(fields: [centerId], references: [id])
+  student     Student      @relation(fields: [studentId], references: [id])
+  tuitionPlan TuitionPlan  @relation(fields: [tuitionPlanId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+
+  @@index([centerId])
+  @@index([studentId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([issueDate])
+}
+
+// Invoice Line Item
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  description String   @db.VarChar(255)
+  quantity    Int      @default(1)
+  amount      Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+// Payment Record
+model Payment {
+  id              String             @id @default(uuid())
+  invoiceId       String
+  amount          Decimal            @db.Decimal(12, 2)
+  paymentMethod   PaymentMethod
+  transactionId   String?            @db.VarChar(100)
+  transactionDate DateTime
+  bankCode        String?           @db.VarChar(20)
+  qrCodeUrl       String?           @db.VarChar(500)
+  status          PaymentMethodStatus @default(pending)
+  confirmedBy     String?
+  confirmedAt     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id])
+  confirmedByUser User?  @relation("ConfirmedBy", fields: [confirmedBy], references: [id])
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([transactionDate])
+}
+
+// ============================================================
+// ROLE-BASED ACCESS CONTROL
+// ============================================================
+
+// Role Definition
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(50)
+  description String?   @db.Text
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  @@index([name])
+  @@index([isSystem])
+}
+
+// Permission Definition
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100)
+  module      String   @db.VarChar(50)
+  level       Int      // 0: None, 1: Read, 2: Create, 3: Update, 4: Delete, 5: Export
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  // Relations
+  roles RolePermission[]
+
+  @@index([module])
+}
+
+// Role-Permission Mapping (Junction Table)
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// User-Role Assignment (Junction Table)
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  centerId  String?  // NULL = all centers (for super_admin)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  center Center? @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, centerId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([centerId])
+}
+
+// ============================================================
+// AUDIT & LOGGING
+// ============================================================
+
+// Audit Log
+model AuditLog {
+  id          String     @id @default(uuid())
+  userId      String
+  centerId    String?
+  action      AuditAction
+  resource    String     @db.VarChar(100)
+  resourceId  String?
+  changes     Json?      // Before/after values
+  ipAddress   String?   @db.VarChar(45)
+  userAgent   String?    @db.Text
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id])
+  center Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([centerId])
+  @@index([resource])
+  @@index([action])
+  @@index([createdAt])
+  @@index([resourceId])
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+// User Notification
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(200)
+  message   String   @db.Text
+  data      Json?
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}

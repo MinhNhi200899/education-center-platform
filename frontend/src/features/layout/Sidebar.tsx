@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItem {
   label: string;
-  icon: React.ComponentType<{ size?: number; stroke?: number }>;
+  icon: React.ElementType;
   path: string;
   roles?: string[];
 }

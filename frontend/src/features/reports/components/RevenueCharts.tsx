@@ -25,6 +25,12 @@ const formatVnd = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
 interface Props {
   data: RevenueReportData | undefined;
   view: RevenueReportData['view'];
@@ -75,7 +81,7 @@ export function RevenuePieByClass({ data, onClassClick, height = 280 }: Pick<Pro
             <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(v: number) => formatVnd(v)} />
+        <Tooltip formatter={(v) => formatVnd(toNumber(v))} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>
@@ -109,16 +115,16 @@ export function RevenueTrendChart({ data, view, height = 280 }: Pick<Props, 'dat
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-          <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
-          <Tooltip formatter={(v: number) => formatVnd(v)} />
+          <YAxis tickFormatter={(v) => `${(toNumber(v) / 1e6).toFixed(0)}M`} />
+          <Tooltip formatter={(v) => formatVnd(toNumber(v))} />
           <Bar dataKey="amount" name="Doanh thu" fill="#228be6" radius={[4, 4, 0, 0]} />
         </BarChart>
       ) : (
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-          <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
-          <Tooltip formatter={(v: number) => formatVnd(v)} />
+          <YAxis tickFormatter={(v) => `${(toNumber(v) / 1e6).toFixed(0)}M`} />
+          <Tooltip formatter={(v) => formatVnd(toNumber(v))} />
           <Line type="monotone" dataKey="amount" name="Doanh thu" stroke="#12b886" strokeWidth={2} dot={false} />
         </LineChart>
       )}

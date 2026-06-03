@@ -79,6 +79,8 @@ export interface Teacher {
   qualification?: string;
   specialization?: string;
   hireDate: string;
+  salary?: number;
+  notes?: string;
   status: 'active' | 'inactive' | 'terminated';
   avatarUrl?: string;
   centerId: string;

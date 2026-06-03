@@ -39,7 +39,7 @@ function StatCard({
   value: string | number;
   change?: number;
   changeType?: 'increase' | 'decrease';
-  icon: React.ComponentType<{ size?: number }>;
+  icon: React.ElementType;
   color: string;
 }) {
   return (

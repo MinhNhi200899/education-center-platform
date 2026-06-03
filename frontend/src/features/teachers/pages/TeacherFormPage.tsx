@@ -39,7 +39,7 @@ export function TeacherFormPage() {
     },
   });
 
-  const { data: teacher } = useQuery({
+  useQuery({
     queryKey: ['teacher', id],
     queryFn: async () => {
       const response = await api.get(`/teachers/${id}`);

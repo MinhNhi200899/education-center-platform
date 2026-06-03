@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Stack, Title, Paper, Grid, Text, Badge, Group, Button, Breadcrumbs, Anchor, Tabs } from '@mantine/core';
+import { Stack, Title, Paper, Grid, Text, Badge, Group, Button, Breadcrumbs, Anchor } from '@mantine/core';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { IconArrowLeft, IconEdit, IconSwitchHorizontal } from '@tabler/icons-react';

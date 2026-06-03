@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { IconArrowLeft, IconEdit, IconUsers, IconUser } from '@tabler/icons-react';
 import api from '@/lib/api';
-import type { Class } from '@/types';
+import type { Class, ScheduleSlot } from '@/types';
 
 export function ClassDetailPage() {
   const { id } = useParams();
@@ -60,10 +60,10 @@ export function ClassDetailPage() {
                 <Group justify="space-between" mb="md">
                   <Title order={4}>Schedule</Title>
                 </Group>
-                {Object.entries(cls.schedule).map(([day, slots]) => slots.length > 0 && (
+                {Object.entries(cls.schedule).map(([day, slots]) => (slots as ScheduleSlot[]).length > 0 && (
                   <div key={day}>
                     <Text fw={500} tt="capitalize" mb="xs">{day}</Text>
-                    {slots.map((slot, i) => (
+                    {(slots as ScheduleSlot[]).map((slot: ScheduleSlot, i: number) => (
                       <Text key={i} size="sm" c="dimmed">{slot.startTime} - {slot.endTime} {slot.room && `(Room ${slot.room})`}</Text>
                     ))}
                     <Divider my="sm" />

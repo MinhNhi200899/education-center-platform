@@ -38,7 +38,7 @@ export function ClassFormPage() {
     },
   });
 
-  const { data: cls } = useQuery({
+  useQuery({
     queryKey: ['class', id],
     queryFn: async () => {
       const response = await api.get(`/classes/${id}`);

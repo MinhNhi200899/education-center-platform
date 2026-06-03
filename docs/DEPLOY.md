@@ -41,7 +41,7 @@ DATABASE_URL="postgresql://..." npx ts-node --transpile-only scripts/seed-dev.ts
 |-------|--------|
 | **Root Directory** | *(để trống — root repo)* |
 | **Runtime** | Node |
-| **Build Command** | `npm install && npm run build && npx prisma db push` |
+| **Build Command** | `npm ci --include=dev && npm run build && npx prisma db push` |
 | **Start Command** | `npm start` |
 | **Health Check Path** | `/api/v1/health` |
 

@@ -251,7 +251,7 @@ export class PaymentService {
 
     // Calculate due date based on billing cycle
     const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
-    let dueDate = data.dueDate ? new Date(data.dueDate) : this.calculateDueDate(issueDate, tuitionPlan.billingCycle, tuitionPlan.dueDay);
+    const dueDate = data.dueDate ? new Date(data.dueDate) : this.calculateDueDate(issueDate, tuitionPlan.billingCycle, tuitionPlan.dueDay);
 
     const invoice = await prisma.$transaction(async (tx) => {
       // Create invoice
@@ -1254,7 +1254,7 @@ export class PaymentService {
     }
 
     let periodStart: Date;
-    let periodEnd: Date = now;
+    const periodEnd: Date = now;
     let previousPeriodStart: Date;
     let previousPeriodEnd: Date;
 

@@ -1,6 +1,6 @@
 // RBAC module exports
 export { default as rbacRoutes } from './rbac.routes';
-export { default as rbacController } from './rbac.controller';
+export * as rbacController from './rbac.controller';
 export { rbacService, RbacService } from './services/rbac.service';
 
 // Middleware

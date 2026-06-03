@@ -71,7 +71,6 @@ export class ClassService {
         endDate: endDate ? new Date(endDate) : null,
         notes: notes || null,
         status: ClassStatus.active,
-        currentEnrollment: 0,
       },
       include: {
         center: { select: { id: true, name: true, code: true } },
@@ -214,9 +213,12 @@ export class ClassService {
     }
 
     // Check capacity constraint if reducing
-    if (data.capacity && data.capacity < classRecord.currentEnrollment) {
+    const activeEnrollment = await prisma.enrollment.count({
+      where: { classId: id, status: 'active' },
+    });
+    if (data.capacity && data.capacity < activeEnrollment) {
       throw new BadRequestException(
-        `Cannot reduce capacity below current enrollment of ${classRecord.currentEnrollment}`
+        `Cannot reduce capacity below current enrollment of ${activeEnrollment}`
       );
     }
 
@@ -484,12 +486,6 @@ export class ClassService {
         })),
       });
 
-      // Update class enrollment count
-      await tx.class.update({
-        where: { id: classId },
-        data: { currentEnrollment: { increment: studentIds.length } },
-      });
-
       // Fetch created enrollments
       return tx.enrollment.findMany({
         where: { classId, studentId: { in: studentIds } },
@@ -524,11 +520,6 @@ export class ClassService {
         data: { status: 'withdrawn', endDate: new Date() },
       });
 
-      // Decrement class enrollment count
-      await tx.class.update({
-        where: { id: classId },
-        data: { currentEnrollment: { decrement: 1 } },
-      });
     });
 
     logger.info('Student withdrawn from class', { classId, studentId });
@@ -582,7 +573,13 @@ export class ClassService {
     const sessions = await prisma.session.findMany({
       where,
       include: {
-        teacher: { select: { id: true, fullName: true } },
+        teacher: {
+          select: {
+            id: true,
+            email: true,
+            teacher: { select: { fullName: true } },
+          },
+        },
         _count: {
           select: {
             attendanceRecords: true,
@@ -600,7 +597,12 @@ export class ClassService {
       classroom: s.classroom,
       sessionType: s.sessionType,
       status: s.status,
-      teacher: s.teacher,
+      teacher: s.teacher
+        ? {
+            id: s.teacher.id,
+            fullName: s.teacher.teacher?.fullName ?? s.teacher.email,
+          }
+        : null,
       attendanceSummary: s._count.attendanceRecords,
     }));
   }
@@ -667,7 +669,7 @@ export class ClassService {
       description: classRecord.description,
       academicLevel: classRecord.academicLevel,
       capacity: classRecord.capacity,
-      currentEnrollment: classRecord.currentEnrollment || 0,
+      currentEnrollment: classRecord._count?.enrollments ?? 0,
       status: classRecord.status,
       classroom: classRecord.classroom,
       schedule: classRecord.schedule,

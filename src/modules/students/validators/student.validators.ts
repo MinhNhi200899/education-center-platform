@@ -128,7 +128,7 @@ export const parentSchema = z.object({
 
 // Type exports
 export type CreateStudentInput = z.infer<typeof createStudentSchema>['body'];
-export type UpdateStudentInput = z.infer<typeof updateStudentSchema>['body']['body'];
+export type UpdateStudentInput = z.infer<typeof updateStudentSchema>['body'];
 export type QueryStudentInput = z.infer<typeof queryStudentSchema>['query'];
 export type ParentInput = z.infer<typeof parentSchema>['body'];
 export type BulkDeleteInput = z.infer<typeof bulkDeleteSchema>['body'];

@@ -423,7 +423,7 @@ describe('Class Validators', () => {
         },
       };
 
-      const result = enrollStudentsSchema.safeParse(validData);
+      const result = enrollStudentsSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
     });
   });

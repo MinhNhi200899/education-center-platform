@@ -230,6 +230,7 @@ describe('AttendanceService', () => {
       mockPrismaClient.attendanceRecord.findUnique.mockResolvedValue(null);
       mockPrismaClient.attendanceRecord.create.mockResolvedValue(createMockAttendanceRecord());
       mockPrismaClient.session.update.mockResolvedValue(mockSession);
+      mockPrismaClient.parent.findMany.mockResolvedValue([]);
 
       const result = await service.bulkMarkAttendance({ sessionId, records }, recordedBy);
 
@@ -263,6 +264,7 @@ describe('AttendanceService', () => {
         status: AttendanceStatus.late,
       });
       mockPrismaClient.session.update.mockResolvedValue(mockSession);
+      mockPrismaClient.parent.findMany.mockResolvedValue([]);
 
       const result = await service.bulkMarkAttendance({ sessionId, records }, recordedBy);
 

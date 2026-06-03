@@ -7,7 +7,7 @@ import express, { Application } from 'express';
 // ============================================================
 
 // Mock the database connection before importing app
-vi.mock('../src/config/database', () => {
+vi.mock('../../src/config/database', () => {
   const mockPrismaClient = {
     student: {
       findUnique: vi.fn(),
@@ -64,7 +64,7 @@ vi.mock('../src/config/database', () => {
 });
 
 // Mock logger
-vi.mock('../src/shared/services/logger.service', () => ({
+vi.mock('../../src/shared/services/logger.service', () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -74,9 +74,9 @@ vi.mock('../src/shared/services/logger.service', () => ({
 }));
 
 // Import express app after mocking
-import { app } from '../src/app';
+import { app } from '../../src/app';
 import { AttendanceStatus, SessionStatus, EnrollmentStatus } from '@prisma/client';
-import { generateId } from './factories/data.factory';
+import { generateId } from '../factories/data.factory';
 
 // ============================================================
 // API TESTS - ATTENDANCE ENDPOINTS

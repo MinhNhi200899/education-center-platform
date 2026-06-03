@@ -1,59 +1,39 @@
-# ============================================================
-# Education Center Platform - Dockerfile
-# Node.js 20 LTS + PostgreSQL 15 + Redis 7
-# ============================================================
+# Education Center Platform — production API image (optional; Render uses Node runtime)
 
-# Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm ci --only=production
+COPY prisma ./prisma
+COPY tsconfig.json ./
+COPY src ./src
 
-# Copy source code
-COPY . .
-
-# Generate Prisma client
 RUN npx prisma generate
-
-# Prune dev dependencies
+RUN npm run build
 RUN npm prune --production
 
-# Production stage
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
-# Copy built artifacts from builder
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
-# Set ownership
-RUN chown -R nodejs:nodejs /app
-
-# Switch to non-root user
 USER nodejs
 
-# Environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=10000
 
-# Expose port
-EXPOSE 3000
+EXPOSE 10000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:10000/health || exit 1
 
-# Start application
 CMD ["node", "dist/server.js"]

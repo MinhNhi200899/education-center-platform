@@ -78,7 +78,7 @@ export class ScheduleService {
       for (const newSlot of newSlots) {
         // Check against each class the teacher is assigned to
         for (const assignment of teacherAssignments) {
-          const classSchedule = assignment.class.schedule as WeeklySchedule;
+          const classSchedule = assignment.class.schedule as unknown as WeeklySchedule;
           const existingSlots = classSchedule[day] || [];
 
           for (const existingSlot of existingSlots) {
@@ -134,7 +134,7 @@ export class ScheduleService {
 
       for (const newSlot of newSlots) {
         for (const classRecord of classesInRoom) {
-          const classSchedule = classRecord.schedule as WeeklySchedule;
+          const classSchedule = classRecord.schedule as unknown as WeeklySchedule;
           const existingSlots = classSchedule[day] || [];
 
           for (const existingSlot of existingSlots) {
@@ -218,7 +218,7 @@ export class ScheduleService {
       throw new NotFoundException('Class');
     }
 
-    const schedule = classRecord.schedule as WeeklySchedule;
+    const schedule = classRecord.schedule as unknown as WeeklySchedule;
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
     const dayMap: Record<string, number> = {

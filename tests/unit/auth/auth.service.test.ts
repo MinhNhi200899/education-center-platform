@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import bcrypt from 'bcrypt';
-import { AuthService } from '../../../src/modules/auth/services/auth.service';
 import { mockPrismaClient, resetPrismaMocks } from '../../mocks/prisma.mock';
 import { mockLogger, resetLoggerMocks } from '../../mocks/logger.mock';
 import {
@@ -17,16 +16,18 @@ import {
   TokenInvalidException,
 } from '../../../src/shared/types/error.types';
 
+const mockJwtService = vi.hoisted(() => ({
+  generateAccessToken: vi.fn().mockReturnValue('mock-access-token'),
+  generateRefreshToken: vi.fn().mockReturnValue('mock-refresh-token'),
+  verifyAccessToken: vi.fn(),
+  verifyRefreshToken: vi.fn(),
+  hashToken: vi.fn().mockReturnValue('hashed-token'),
+  getAccessTokenExpiry: vi.fn().mockReturnValue(900),
+}));
+
 // Mock jwt service
 vi.mock('../../../src/modules/auth/services/jwt.service', () => ({
-  jwtService: {
-    generateAccessToken: vi.fn().mockReturnValue('mock-access-token'),
-    generateRefreshToken: vi.fn().mockReturnValue('mock-refresh-token'),
-    verifyAccessToken: vi.fn(),
-    verifyRefreshToken: vi.fn(),
-    hashToken: vi.fn().mockReturnValue('hashed-token'),
-    getAccessTokenExpiry: vi.fn().mockReturnValue(900),
-  },
+  jwtService: mockJwtService,
 }));
 
 // Mock config
@@ -48,11 +49,20 @@ vi.mock('../../../src/config', () => ({
 // ============================================================
 
 describe('AuthService', () => {
-  let service: AuthService;
+  let AuthService: typeof import('../../../src/modules/auth/services/auth.service').AuthService;
+  let service: InstanceType<typeof AuthService>;
+
+  beforeAll(async () => {
+    ({ AuthService } = await import('../../../src/modules/auth/services/auth.service'));
+  });
 
   beforeEach(() => {
     resetPrismaMocks();
     resetLoggerMocks();
+    mockJwtService.generateAccessToken.mockReturnValue('mock-access-token');
+    mockJwtService.generateRefreshToken.mockReturnValue('mock-refresh-token');
+    mockJwtService.hashToken.mockReturnValue('hashed-token');
+    mockJwtService.getAccessTokenExpiry.mockReturnValue(900);
     service = new AuthService();
   });
 

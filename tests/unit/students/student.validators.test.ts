@@ -334,7 +334,7 @@ describe('Student Validators', () => {
         },
       };
 
-      const result = parentSchema.safeParse(validData);
+      const result = parentSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
     });
 

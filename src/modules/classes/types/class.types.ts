@@ -119,7 +119,7 @@ export interface ClassResponse {
 }
 
 // Class with full details
-export interface ClassDetailResponse extends ClassResponse {
+export interface ClassDetailResponse extends Omit<ClassResponse, 'teachers' | 'students'> {
   primaryTeacher: Teacher | null;
   teachers: (ClassTeacher & { teacher: Teacher })[];
   students: (Enrollment & { student: { id: string; fullName: string } })[];

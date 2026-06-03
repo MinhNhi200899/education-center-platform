@@ -57,7 +57,7 @@ export interface StudentResponse {
     name: string;
     code: string;
   };
-  parents?: ParentResponse[];
+  parents?: ParentDTO[];
   currentEnrollment?: {
     id: string;
     class: {

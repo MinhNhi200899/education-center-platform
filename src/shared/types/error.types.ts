@@ -65,6 +65,12 @@ export class ForbiddenException extends BaseException {
   }
 }
 
+export class BadRequestException extends BaseException {
+  constructor(message: string, code: string = 'BAD_REQUEST') {
+    super(message, code, 400);
+  }
+}
+
 export class AccountLockedException extends BaseException {
   constructor(message: string = 'Account is locked') {
     super(message, 'ACCOUNT_LOCKED', 423);

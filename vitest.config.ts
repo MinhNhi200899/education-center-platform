@@ -30,8 +30,8 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     teardownTimeout: 10000,
-    clearMocks: true,
-    restoreMocks: true,
+    clearMocks: false,
+    restoreMocks: false,
     sinon: true,
   },
   resolve: {

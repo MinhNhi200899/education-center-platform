@@ -7,9 +7,11 @@ import { vi } from 'vitest';
 export const mockPrismaClient = {
   student: {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
   },
@@ -19,6 +21,12 @@ export const mockPrismaClient = {
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+  },
+  parent: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
   },
   attendanceRecord: {
     findUnique: vi.fn(),
@@ -30,16 +38,20 @@ export const mockPrismaClient = {
   },
   enrollment: {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
+    createMany: vi.fn(),
     update: vi.fn(),
     count: vi.fn(),
   },
   class: {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    count: vi.fn(),
   },
   teacher: {
     findUnique: vi.fn(),
@@ -57,6 +69,30 @@ export const mockPrismaClient = {
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+  },
+  refreshToken: {
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+  },
+  passwordReset: {
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  classTeacher: {
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   absenceReason: {
     findUnique: vi.fn(),

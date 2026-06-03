@@ -4,10 +4,21 @@
 // ============================================================
 
 import { vi } from 'vitest';
+import { mockPrismaClient, resetPrismaMocks } from './mocks/prisma.mock';
+
+vi.mock('../src/config/database', () => ({
+  prisma: mockPrismaClient,
+  connectDatabase: vi.fn(),
+  disconnectDatabase: vi.fn(),
+  default: mockPrismaClient,
+}));
 
 // Environment setup
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test_db';
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL =
+    'postgresql://ecmp_user:ecmp_password@localhost:5432/ecmp_db';
+}
 process.env.REDIS_URL = 'redis://localhost:6379';
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';
 process.env.REFRESH_TOKEN_SECRET = 'test-refresh-secret-key-for-testing-only';
@@ -26,9 +37,9 @@ afterAll(() => {
   console.log('✅ Test suite completed');
 });
 
-// Reset mocks before each test
+// Reset prisma mocks before each test (avoid clearing module-level vi.fn return values)
 beforeEach(() => {
-  vi.clearAllMocks();
+  resetPrismaMocks();
 });
 
 vi.setConfig({ testTimeout: DEFAULT_TIMEOUT });

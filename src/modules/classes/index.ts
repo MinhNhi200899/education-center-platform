@@ -2,7 +2,15 @@
 export * from './classes.controller';
 export * from './classes.routes';
 export * from './types/class.types';
-export * from './validators/class.validators';
+export {
+  createClassSchema,
+  updateClassSchema,
+  queryClassSchema,
+  assignTeacherSchema,
+  bulkAssignTeachersSchema,
+  enrollStudentsSchema,
+  withdrawStudentSchema,
+} from './validators/class.validators';
 export { classService } from './services/class.service';
 export { scheduleService } from './services/schedule.service';
 

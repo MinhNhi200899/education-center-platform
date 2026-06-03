@@ -239,7 +239,12 @@ export class AuthService {
     });
 
     // Store new refresh token
-    await this.storeRefreshToken(user.id, newRefreshToken, storedToken.ipAddress, storedToken.userAgent);
+    await this.storeRefreshToken(
+      user.id,
+      newRefreshToken,
+      storedToken.ipAddress ?? undefined,
+      storedToken.userAgent ?? undefined
+    );
 
     // Generate access token
     const newAccessToken = jwtService.generateAccessToken({

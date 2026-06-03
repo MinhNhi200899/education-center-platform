@@ -45,7 +45,7 @@ export class TeacherService {
         qualification: data.qualification || null,
         specialization: data.specialization || null,
         hireDate: new Date(data.hireDate),
-        salary: data.salary ? BigInt(data.salary * 100) : null, // Store as cents
+        salary: data.salary ?? null,
         notes: data.notes || null,
         status: TeacherStatus.active,
       },
@@ -164,7 +164,7 @@ export class TeacherService {
       where: { id },
       data: {
         ...data,
-        salary: data.salary ? BigInt(data.salary * 100) : undefined,
+        salary: data.salary,
       },
       include: {
         center: { select: { id: true, name: true, code: true } },

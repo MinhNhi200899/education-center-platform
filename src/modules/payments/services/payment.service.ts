@@ -672,7 +672,7 @@ export class PaymentService {
       },
       include: {
         invoice: { select: { id: true, invoiceNumber: true } },
-        confirmedByUser: { select: { id: true, fullName: true } },
+        confirmedByUser: { select: { id: true, email: true } },
       },
     });
 
@@ -704,7 +704,7 @@ export class PaymentService {
         items: true,
         payments: {
           include: {
-            confirmedByUser: { select: { id: true, fullName: true } },
+            confirmedByUser: { select: { id: true, email: true } },
           },
         },
       },
@@ -969,7 +969,7 @@ export class PaymentService {
         invoice: {
           select: { id: true, invoiceNumber: true },
         },
-        confirmedByUser: { select: { id: true, fullName: true } },
+        confirmedByUser: { select: { id: true, email: true } },
       },
     });
 
@@ -1014,7 +1014,7 @@ export class PaymentService {
       },
       include: {
         invoice: { select: { id: true, invoiceNumber: true } },
-        confirmedByUser: { select: { id: true, fullName: true } },
+        confirmedByUser: { select: { id: true, email: true } },
       },
     });
 
@@ -1041,7 +1041,7 @@ export class PaymentService {
             student: { select: { id: true, fullName: true } },
           },
         },
-        confirmedByUser: { select: { id: true, fullName: true } },
+        confirmedByUser: { select: { id: true, email: true } },
       },
     });
 
@@ -1089,7 +1089,7 @@ export class PaymentService {
         invoice: {
           include: { student: { select: { id: true, fullName: true } } },
         },
-        confirmedByUser: { select: { id: true, fullName: true } },
+        confirmedByUser: { select: { id: true, email: true } },
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -2010,7 +2010,7 @@ export class PaymentService {
           }
         : undefined,
       confirmedByUser: payment.confirmedByUser
-        ? { id: payment.confirmedByUser.id, fullName: payment.confirmedByUser.fullName }
+        ? { id: payment.confirmedByUser.id, fullName: payment.confirmedByUser.email }
         : undefined,
     };
   }

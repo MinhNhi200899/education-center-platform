@@ -269,15 +269,16 @@ describe('ClassService', () => {
       mockPrismaClient.class.findFirst.mockResolvedValue(existingClass);
 
       await expect(
-        service.update(classId, { name: 'Class A' })
+        service.update(classId, { name: 'Class B' })
       ).rejects.toThrow(ConflictException);
     });
 
     it('should throw BadRequestException when reducing capacity below enrollment', async () => {
       const classId = generateId();
-      const classRecord = createMockClass({ id: classId, capacity: 20, currentEnrollment: 25 });
+      const classRecord = createMockClass({ id: classId, capacity: 20 });
 
       mockPrismaClient.class.findUnique.mockResolvedValue(classRecord);
+      mockPrismaClient.enrollment.count.mockResolvedValue(25);
 
       await expect(
         service.update(classId, { capacity: 15 })
@@ -342,11 +343,10 @@ describe('ClassService', () => {
       mockPrismaClient.class.findUnique.mockResolvedValue(classRecord);
       mockPrismaClient.teacher.findUnique.mockResolvedValue(teacher);
       mockPrismaClient.classTeacher.findFirst.mockResolvedValue(null);
-      mockPrismaClient.classTeacher.findFirst
-        .mockResolvedValueOnce(null) // No existing primary
-        .mockResolvedValueOnce(classTeacher); // For getClassTeachers
       mockPrismaClient.classTeacher.create.mockResolvedValue(classTeacher);
-      mockPrismaClient.classTeacher.findMany.mockResolvedValue([classTeacher]);
+      mockPrismaClient.classTeacher.findMany.mockResolvedValue([
+        { ...classTeacher, teacher: { id: teacherId, fullName: teacher.fullName } },
+      ]);
 
       const result = await service.assignTeacher(classId, teacherId, 'primary');
 
@@ -435,12 +435,12 @@ describe('ClassService', () => {
         _count: { enrollments: 0 },
       });
       mockPrismaClient.student.findMany.mockResolvedValue(students);
-      mockPrismaClient.enrollment.findMany.mockResolvedValue([]);
+      mockPrismaClient.enrollment.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(
+          studentIds.map((studentId) => ({ id: generateId(), studentId, status: 'active' }))
+        );
       mockPrismaClient.enrollment.createMany.mockResolvedValue({ count: 2 });
-      mockPrismaClient.class.update.mockResolvedValue(classRecord);
-      mockPrismaClient.enrollment.findMany.mockResolvedValue(
-        studentIds.map((studentId) => ({ id: generateId(), studentId, status: 'active' }))
-      );
 
       const result = await service.enrollStudents(classId, {
         studentIds,

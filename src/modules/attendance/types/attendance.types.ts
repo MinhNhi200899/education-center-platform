@@ -216,6 +216,7 @@ export interface AbsenceReasonDTO {
   displayOrder?: number;
   centerId?: string;
   isSystem?: boolean;
+  isActive?: boolean;
 }
 
 /**

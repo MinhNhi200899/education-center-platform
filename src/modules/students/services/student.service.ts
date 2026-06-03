@@ -196,10 +196,6 @@ export class StudentService {
       where: { id },
       data: {
         ...data,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth as any) : undefined,
-        enrollmentDate: data.enrollmentDate
-          ? new Date(data.enrollmentDate as any)
-          : undefined,
       },
       include: {
         center: { select: { id: true, name: true, code: true } },
@@ -342,11 +338,6 @@ export class StudentService {
         },
       });
 
-      await tx.class.update({
-        where: { id: fromClassId },
-        data: { currentEnrollment: { decrement: 1 } },
-      });
-
       const existingTarget = await tx.enrollment.findUnique({
         where: { studentId_classId: { studentId, classId: toClassId } },
       });
@@ -377,11 +368,6 @@ export class StudentService {
           },
         });
       }
-
-      await tx.class.update({
-        where: { id: toClassId },
-        data: { currentEnrollment: { increment: 1 } },
-      });
 
       return { withdrawn, newEnrollment };
     });

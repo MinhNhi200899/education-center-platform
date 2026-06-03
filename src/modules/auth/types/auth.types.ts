@@ -74,6 +74,13 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface TokenPayload {
+  userId: string;
+  email: string;
+  centerId: string | null;
+  type?: 'access' | 'refresh';
+}
+
 // Session info for token generation
 export interface SessionInfo {
   userId: string;

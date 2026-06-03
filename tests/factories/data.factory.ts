@@ -80,6 +80,30 @@ export const createMockClass = (overrides = {}) => ({
 });
 
 /**
+ * Create a mock teacher
+ */
+export const createMockTeacher = (overrides = {}) => ({
+  id: generateId(),
+  centerId: generateId(),
+  fullName: 'Test Teacher',
+  dateOfBirth: new Date('1990-01-01'),
+  gender: 'male' as const,
+  phone: '0123456789',
+  email: 'teacher@test.com',
+  address: null,
+  qualification: null,
+  specialization: null,
+  hireDate: new Date('2020-01-01'),
+  salary: null,
+  status: 'active' as const,
+  avatarUrl: null,
+  notes: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
+
+/**
  * Create a mock enrollment
  */
 export const createMockEnrollment = (overrides = {}) => ({

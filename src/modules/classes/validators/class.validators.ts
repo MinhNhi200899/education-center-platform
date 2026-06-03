@@ -178,7 +178,7 @@ export const withdrawStudentSchema = z.object({
 
 // Type exports
 export type CreateClassInput = z.infer<typeof createClassSchema>['body'];
-export type UpdateClassInput = z.infer<typeof updateClassSchema>['body']['body'];
+export type UpdateClassInput = z.infer<typeof updateClassSchema>['body'];
 export type QueryClassInput = z.infer<typeof queryClassSchema>['query'];
 export type AssignTeacherInput = z.infer<typeof assignTeacherSchema>['body'];
 export type BulkAssignTeachersInput = z.infer<typeof bulkAssignTeachersSchema>['body'];

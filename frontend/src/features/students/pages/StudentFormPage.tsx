@@ -92,7 +92,7 @@ export function StudentFormPage() {
 
   const updateMutation = useMutation({
     mutationFn: async (values: typeof form.values) => {
-      const { centerId: _c, enrollmentDate, dateOfBirth, gender, ...rest } = values;
+      const { centerId: _c, enrollmentDate: _e, dateOfBirth: _d, gender: _g, ...rest } = values;
       const response = await api.put(`/students/${id}`, rest);
       return response.data.data;
     },

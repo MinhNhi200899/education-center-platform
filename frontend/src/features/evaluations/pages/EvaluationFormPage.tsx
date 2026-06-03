@@ -105,7 +105,6 @@ export function EvaluationFormPage() {
       writingScore: existing.writingScore ?? 7,
       comments: existing.comments || '',
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing]);
 
   const saveMutation = useMutation({

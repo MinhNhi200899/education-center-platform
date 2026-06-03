@@ -85,7 +85,7 @@ router.post(
   '/roles',
   authenticate,
   requirePermission('roles.create'),
-  validateRequest(createRoleSchema),
+  validateRequest({ body: createRoleSchema.shape.body }),
   rbacController.createRole
 );
 
@@ -98,7 +98,10 @@ router.put(
   '/roles/:id',
   authenticate,
   requirePermission('roles.update'),
-  validateRequest(updateRoleSchema),
+  validateRequest({
+    params: updateRoleSchema.shape.params,
+    body: updateRoleSchema.shape.body,
+  }),
   rbacController.updateRole
 );
 
@@ -123,7 +126,10 @@ router.put(
   '/roles/:id/permissions',
   authenticate,
   requirePermission('roles.update'),
-  validateRequest(assignPermissionsSchema),
+  validateRequest({
+    params: assignPermissionsSchema.shape.params,
+    body: assignPermissionsSchema.shape.body,
+  }),
   rbacController.assignPermissions
 );
 
@@ -160,7 +166,10 @@ router.post(
   '/users/:userId/roles',
   authenticate,
   requirePermission('users.update'),
-  validateRequest(assignRoleSchema),
+  validateRequest({
+    params: assignRoleSchema.shape.params,
+    body: assignRoleSchema.shape.body,
+  }),
   rbacController.assignRoleToUser
 );
 

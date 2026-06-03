@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "deploy:db": "prisma db push",
     "test": "vitest run",
-    "test:ci": "vitest run tests/unit/auth/auth.validators.test.ts tests/unit/attendance/attendance.validators.test.ts tests/unit/classes/class.validators.test.ts tests/unit/students/student.validators.test.ts tests/unit/students/student.service.test.ts",
+    "test:ci": "vitest run tests/unit",
     "verify": "npm run lint && npx tsc --noEmit && npm run build && npm run test:ci",
     "verify:frontend": "npm run lint --prefix frontend && npm run build --prefix frontend",
     "test:watch": "vitest --watch",

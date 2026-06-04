@@ -55,7 +55,15 @@ import {
   StudentTuitionPage,
   StudentInvoiceDetailPage,
 } from '@/features/portal';
-import { isStudentUser, getHomePath } from '@/lib/roles';
+
+// Teacher portal
+import {
+  TeacherHomePage,
+  TeacherSchedulePage,
+  TeacherClassesPage,
+} from '@/features/teacher-portal';
+
+import { isStudentUser, isTeacherUser, isAdminUser, getHomePath } from '@/lib/roles';
 
 // Protected route wrapper
 function ProtectedRoute() {
@@ -80,7 +88,7 @@ function RoleRoute({ roles }: { roles: string[] }) {
 
   const hasRole = user.roles.some((role) => roles.includes(role));
   if (!hasRole) {
-    return <Navigate to={isStudentUser(user) ? '/portal' : '/dashboard'} replace />;
+    return <Navigate to={getHomePath(user)} replace />;
   }
 
   return <Outlet />;
@@ -93,10 +101,19 @@ function StudentOnlyRoute() {
   return <Outlet />;
 }
 
-function StaffOnlyRoute() {
+function TeacherOnlyRoute() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isTeacherUser(user)) return <Navigate to={getHomePath(user)} replace />;
+  return <Outlet />;
+}
+
+function AdminOnlyRoute() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (isStudentUser(user)) return <Navigate to="/portal" replace />;
+  if (isTeacherUser(user)) return <Navigate to="/teacher" replace />;
+  if (!isAdminUser(user)) return <Navigate to={getHomePath(user)} replace />;
   return <Outlet />;
 }
 
@@ -138,9 +155,20 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // Staff dashboard
+          // Teacher portal
           {
-            element: <StaffOnlyRoute />,
+            path: 'teacher',
+            element: <TeacherOnlyRoute />,
+            children: [
+              { index: true, element: <TeacherHomePage /> },
+              { path: 'schedule', element: <TeacherSchedulePage /> },
+              { path: 'classes', element: <TeacherClassesPage /> },
+            ],
+          },
+
+          // Admin dashboard
+          {
+            element: <AdminOnlyRoute />,
             children: [
           {
             path: 'dashboard',
@@ -179,7 +207,7 @@ export const router = createBrowserRouter([
           {
             path: 'classes',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager', 'teacher']} />
+              <RoleRoute roles={['super_admin', 'center_manager']} />
             ),
             children: [
               { index: true, element: <ClassListPage /> },
@@ -193,7 +221,7 @@ export const router = createBrowserRouter([
           {
             path: 'schedule',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager', 'teacher']} />
+              <RoleRoute roles={['super_admin', 'center_manager']} />
             ),
             children: [{ index: true, element: <SchedulePage /> }],
           },
@@ -202,7 +230,7 @@ export const router = createBrowserRouter([
           {
             path: 'attendance',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager', 'teacher']} />
+              <RoleRoute roles={['super_admin', 'center_manager']} />
             ),
             children: [
               { index: true, element: <AttendanceHubPage /> },
@@ -216,7 +244,7 @@ export const router = createBrowserRouter([
           {
             path: 'evaluations',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager', 'teacher']} />
+              <RoleRoute roles={['super_admin', 'center_manager']} />
             ),
             children: [
               { index: true, element: <EvaluationListPage /> },

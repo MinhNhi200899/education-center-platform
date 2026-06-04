@@ -13,6 +13,7 @@ import sessionsRoutes from '../modules/sessions/sessions.routes';
 import scheduleRoutes from '../modules/schedule/schedule.routes';
 import centersRoutes from '../modules/centers/centers.routes';
 import portalRoutes from '../modules/portal/portal.routes';
+import teacherPortalRoutes from '../modules/teacher-portal/teacher-portal.routes';
 
 const router = Router();
 
@@ -65,5 +66,8 @@ router.use('/centers', centersRoutes);
 
 // Student portal (self-service)
 router.use('/portal', portalRoutes);
+
+// Teacher portal (self-service)
+router.use('/teacher-portal', teacherPortalRoutes);
 
 export default router;

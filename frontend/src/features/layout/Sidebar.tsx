@@ -15,7 +15,7 @@ import {
   IconHome,
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { isStudentUser } from '@/lib/roles';
+import { isStudentUser, isTeacherUser } from '@/lib/roles';
 
 interface NavItem {
   label: string;
@@ -30,14 +30,20 @@ const studentNavItems: NavItem[] = [
   { label: 'Học phí & thông báo', icon: IconReceipt, path: '/portal/tuition' },
 ];
 
+const teacherNavItems: NavItem[] = [
+  { label: 'Trang chủ', icon: IconHome, path: '/teacher' },
+  { label: 'Lịch dạy của tôi', icon: IconCalendarEvent, path: '/teacher/schedule' },
+  { label: 'Lớp của tôi', icon: IconSchool, path: '/teacher/classes' },
+];
+
 const navItems: NavItem[] = [
-  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard', roles: ['super_admin', 'center_manager', 'teacher'] },
+  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard', roles: ['super_admin', 'center_manager'] },
   { label: 'Students', icon: IconUsers, path: '/students', roles: ['super_admin', 'center_manager'] },
   { label: 'Teachers', icon: IconUser, path: '/teachers', roles: ['super_admin', 'center_manager'] },
-  { label: 'Classes', icon: IconSchool, path: '/classes', roles: ['super_admin', 'center_manager', 'teacher'] },
-  { label: 'Lịch dạy', icon: IconCalendarEvent, path: '/schedule', roles: ['super_admin', 'center_manager', 'teacher'] },
-  { label: 'Attendance', icon: IconCalendar, path: '/attendance', roles: ['super_admin', 'center_manager', 'teacher'] },
-  { label: 'Nhận xét HS', icon: IconClipboardCheck, path: '/evaluations', roles: ['super_admin', 'center_manager', 'teacher'] },
+  { label: 'Classes', icon: IconSchool, path: '/classes', roles: ['super_admin', 'center_manager'] },
+  { label: 'Lịch dạy', icon: IconCalendarEvent, path: '/schedule', roles: ['super_admin', 'center_manager'] },
+  { label: 'Attendance', icon: IconCalendar, path: '/attendance', roles: ['super_admin', 'center_manager'] },
+  { label: 'Nhận xét HS', icon: IconClipboardCheck, path: '/evaluations', roles: ['super_admin', 'center_manager'] },
   { label: 'Phiếu thu', icon: IconReceipt, path: '/payments', roles: ['super_admin', 'center_manager', 'parent'] },
   { label: 'Báo cáo', icon: IconReport, path: '/reports', roles: ['super_admin', 'center_manager'] },
 ];
@@ -49,6 +55,8 @@ export function Sidebar() {
 
   const filteredNavItems = isStudentUser(user)
     ? studentNavItems
+    : isTeacherUser(user)
+    ? teacherNavItems
     : navItems.filter((item) => {
         if (!item.roles) return true;
         return user?.roles?.some((role) => item.roles?.includes(role));

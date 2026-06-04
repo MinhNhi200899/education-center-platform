@@ -11,32 +11,85 @@ import {
   AssignPermissionsDTO,
 } from '../types/rbac.types';
 import { PERMISSION_DEFINITIONS } from './permissions';
+import { DEFAULT_ROLES } from '../types/rbac.types';
 import { NotFoundException, ConflictException, ForbiddenException } from '../../../shared/types/error.types';
 
 export class RbacService {
+  /**
+   * Upsert all permission definitions (idempotent).
+   */
+  async upsertPermissions(): Promise<void> {
+    for (const perm of PERMISSION_DEFINITIONS) {
+      await prisma.permission.upsert({
+        where: { name: perm.name },
+        create: {
+          name: perm.name,
+          module: perm.module,
+          level: perm.level,
+          description: perm.description,
+        },
+        update: {
+          module: perm.module,
+          level: perm.level,
+          description: perm.description,
+        },
+      });
+    }
+  }
+
+  /**
+   * Ensure system roles exist and have default permissions (adds missing links only).
+   */
+  async syncSystemRolePermissions(): Promise<void> {
+    await this.upsertPermissions();
+
+    for (const roleDef of DEFAULT_ROLES) {
+      const role = await prisma.role.upsert({
+        where: { name: roleDef.name },
+        create: {
+          name: roleDef.name,
+          description: roleDef.description,
+          isSystem: roleDef.isSystem,
+          isActive: true,
+        },
+        update: {
+          description: roleDef.description,
+          isSystem: roleDef.isSystem,
+        },
+      });
+
+      const permissionNames =
+        roleDef.permissions[0] === '*'
+          ? (await prisma.permission.findMany({ select: { name: true } })).map((p) => p.name)
+          : roleDef.permissions;
+
+      for (const permName of permissionNames) {
+        const perm = await prisma.permission.findUnique({ where: { name: permName } });
+        if (!perm) {
+          logger.warn('Permission missing during role sync', { role: roleDef.name, permName });
+          continue;
+        }
+
+        await prisma.rolePermission.upsert({
+          where: {
+            roleId_permissionId: { roleId: role.id, permissionId: perm.id },
+          },
+          create: { roleId: role.id, permissionId: perm.id },
+          update: {},
+        });
+      }
+    }
+
+    logger.info('Synced system role permissions');
+  }
+
   /**
    * Seed default permissions
    */
   async seedPermissions(): Promise<void> {
     try {
-      const existing = await prisma.permission.count();
-      if (existing > 0) {
-        logger.info('Permissions already seeded, skipping');
-        return;
-      }
-
-      for (const perm of PERMISSION_DEFINITIONS) {
-        await prisma.permission.create({
-          data: {
-            name: perm.name,
-            module: perm.module,
-            level: perm.level,
-            description: perm.description,
-          },
-        });
-      }
-
-      logger.info(`Seeded ${PERMISSION_DEFINITIONS.length} permissions`);
+      await this.upsertPermissions();
+      logger.info(`Upserted ${PERMISSION_DEFINITIONS.length} permissions`);
     } catch (error) {
       logger.error('Failed to seed permissions', { error });
       throw error;
@@ -48,97 +101,8 @@ export class RbacService {
    */
   async seedRoles(): Promise<void> {
     try {
-      const existing = await prisma.role.count();
-      if (existing > 0) {
-        logger.info('Roles already seeded, skipping');
-        return;
-      }
-
-      const roleDefinitions = [
-        {
-          name: 'super_admin',
-          description: 'Platform-wide administrator',
-          isSystem: true,
-          permissions: ['*'], // All permissions
-        },
-        {
-          name: 'center_manager',
-          description: 'Center administrator',
-          isSystem: true,
-          permissions: [
-            'centers.read', 'centers.update',
-            'students.read', 'students.create', 'students.update', 'students.delete', 'students.export',
-            'teachers.read', 'teachers.create', 'teachers.update', 'teachers.delete', 'teachers.export',
-            'classes.read', 'classes.create', 'classes.update', 'classes.delete',
-            'attendance.read', 'attendance.create', 'attendance.update',
-            'sessions.read', 'sessions.create', 'sessions.update', 'sessions.delete',
-            'evaluations.read', 'evaluations.create', 'evaluations.update',
-            'tuition.read', 'tuition.create', 'tuition.update',
-            'payments.read', 'payments.create',
-            'dashboard.read', 'dashboard.export',
-            'reports.read', 'reports.export',
-            'roles.read', 'permissions.read',
-            'users.read', 'users.update',
-            'settings.read', 'settings.update',
-          ],
-        },
-        {
-          name: 'teacher',
-          description: 'Class teacher',
-          isSystem: true,
-          permissions: PERMISSION_DEFINITIONS
-            .filter(p =>
-              ['attendance.', 'schedule.', 'sessions.', 'evaluations.', 'classes.'].some(prefix => p.name.startsWith(prefix)))
-            .map(p => p.name),
-        },
-        {
-          name: 'student',
-          description: 'Student access',
-          isSystem: true,
-          permissions: ['self.read'],
-        },
-        {
-          name: 'parent',
-          description: 'Parent/guardian access',
-          isSystem: true,
-          permissions: ['self.read', 'payments.create'],
-        },
-      ];
-
-      for (const roleDef of roleDefinitions) {
-        const role = await prisma.role.create({
-          data: {
-            name: roleDef.name,
-            description: roleDef.description,
-            isSystem: roleDef.isSystem,
-            isActive: true,
-          },
-        });
-
-        // Assign permissions
-        if (roleDef.permissions[0] === '*') {
-          // Super admin gets all permissions
-          const allPermissions = await prisma.permission.findMany();
-          for (const perm of allPermissions) {
-            await prisma.rolePermission.create({
-              data: { roleId: role.id, permissionId: perm.id },
-            });
-          }
-        } else {
-          for (const permName of roleDef.permissions) {
-            const perm = await prisma.permission.findUnique({
-              where: { name: permName },
-            });
-            if (perm) {
-              await prisma.rolePermission.create({
-                data: { roleId: role.id, permissionId: perm.id },
-              });
-            }
-          }
-        }
-      }
-
-      logger.info('Seeded default roles with permissions');
+      await this.syncSystemRolePermissions();
+      logger.info('Seeded/synced default roles with permissions');
     } catch (error) {
       logger.error('Failed to seed roles', { error });
       throw error;

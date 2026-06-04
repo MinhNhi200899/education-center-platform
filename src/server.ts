@@ -2,6 +2,7 @@ import { app } from './app';
 import { config } from './config';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { logger } from './shared/services/logger.service';
+import { rbacService } from './modules/rbac/services/rbac.service';
 
 const PORT = config.port;
 
@@ -9,6 +10,13 @@ async function startServer(): Promise<void> {
   try {
     // Connect to database
     await connectDatabase();
+
+    // Ensure system roles have required permissions (fixes production RBAC drift)
+    try {
+      await rbacService.syncSystemRolePermissions();
+    } catch (syncError) {
+      logger.warn('RBAC sync on startup failed (server will still start)', { syncError });
+    }
 
     // Start HTTP server
     const server = app.listen(PORT, () => {

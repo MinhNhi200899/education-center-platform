@@ -1,18 +1,41 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { SessionType } from '@prisma/client';
 import { authenticate } from '../auth/middleware/authenticate';
 import { requirePermission } from '../rbac/middleware/require-permission';
 import { validateRequest } from '../../shared/middleware/validate-request';
-import { getSession, updateSession, addSessionMaterial } from './sessions.controller';
+import {
+  createSession,
+  getSession,
+  updateSession,
+  deleteSession,
+  addSessionMaterial,
+} from './sessions.controller';
 
 const router = Router();
 
 router.use(authenticate);
 
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)');
+
 const sessionIdSchema = z.object({ id: z.string().uuid() });
 
-const updateSessionSchema = z.object({
+const createSessionSchema = z.object({
+  classId: z.string().uuid(),
+  sessionDate: z.string().min(1),
+  startTime: timeSchema,
+  endTime: timeSchema,
+  classroom: z.string().max(100).optional(),
+  sessionType: z.nativeEnum(SessionType).optional(),
   notes: z.string().max(10000).optional(),
+});
+
+const updateSessionSchema = z.object({
+  sessionDate: z.string().min(1).optional(),
+  startTime: timeSchema.optional(),
+  endTime: timeSchema.optional(),
+  classroom: z.string().max(100).nullable().optional(),
+  notes: z.string().max(10000).nullable().optional(),
   status: z.enum(['scheduled', 'completed', 'cancelled']).optional(),
 });
 
@@ -20,6 +43,13 @@ const addMaterialSchema = z.object({
   driveUrl: z.string().url().max(500),
   fileName: z.string().max(255).optional(),
 });
+
+router.post(
+  '/',
+  requirePermission('sessions.create'),
+  validateRequest({ body: createSessionSchema }),
+  createSession
+);
 
 router.get(
   '/:id',
@@ -33,6 +63,13 @@ router.put(
   requirePermission('sessions.update'),
   validateRequest({ params: sessionIdSchema, body: updateSessionSchema }),
   updateSession
+);
+
+router.delete(
+  '/:id',
+  requirePermission('sessions.delete'),
+  validateRequest({ params: sessionIdSchema }),
+  deleteSession
 );
 
 router.post(

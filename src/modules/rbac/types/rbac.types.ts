@@ -174,7 +174,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'classes.read',
       'attendance.read', 'attendance.create', 'attendance.update',
       'schedule.read', 'schedule.create',
-      'sessions.read', 'sessions.update',
+      'sessions.read', 'sessions.create', 'sessions.update', 'sessions.delete',
       'evaluations.read', 'evaluations.create', 'evaluations.update',
     ],
   },

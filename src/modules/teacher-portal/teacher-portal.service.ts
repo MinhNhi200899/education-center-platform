@@ -85,6 +85,107 @@ export class TeacherPortalService {
             },
           });
 
+    // ---- Students with session counts + revenue summary ----
+    let students: Array<{
+      studentId: string;
+      fullName: string;
+      avatarUrl: string | null;
+      classNames: string[];
+      sessionsAttended: number;
+      attendanceRate: number;
+    }> = [];
+    let revenue = {
+      totalRevenue: 0,
+      paidInvoiceCount: 0,
+      unpaidAmount: 0,
+      unpaidInvoiceCount: 0,
+      studentCount: 0,
+    };
+
+    if (classIds.length > 0) {
+      const enrollments = await prisma.enrollment.findMany({
+        where: { classId: { in: classIds }, status: 'active' },
+        select: {
+          studentId: true,
+          student: { select: { id: true, fullName: true, avatarUrl: true } },
+          class: { select: { name: true } },
+        },
+      });
+
+      // Dedupe students, accumulate class names
+      const studentMap = new Map<
+        string,
+        { studentId: string; fullName: string; avatarUrl: string | null; classNames: string[] }
+      >();
+      for (const e of enrollments) {
+        const existing = studentMap.get(e.studentId);
+        if (existing) {
+          if (!existing.classNames.includes(e.class.name)) {
+            existing.classNames.push(e.class.name);
+          }
+        } else {
+          studentMap.set(e.studentId, {
+            studentId: e.student.id,
+            fullName: e.student.fullName,
+            avatarUrl: e.student.avatarUrl,
+            classNames: [e.class.name],
+          });
+        }
+      }
+
+      const studentIds = [...studentMap.keys()];
+      const totalSessionsInClasses = await prisma.session.count({
+        where: { classId: { in: classIds } },
+      });
+
+      if (studentIds.length > 0) {
+        const attendanceCounts = await prisma.attendanceRecord.groupBy({
+          by: ['studentId'],
+          where: {
+            studentId: { in: studentIds },
+            session: { classId: { in: classIds } },
+            status: 'present',
+          },
+          _count: { _all: true },
+        });
+        const countMap = new Map(attendanceCounts.map((a) => [a.studentId, a._count._all]));
+
+        students = [...studentMap.values()]
+          .map((s) => {
+            const sessionsAttended = countMap.get(s.studentId) ?? 0;
+            const attendanceRate =
+              totalSessionsInClasses > 0
+                ? Math.round((sessionsAttended / totalSessionsInClasses) * 100)
+                : 0;
+            return { ...s, sessionsAttended, attendanceRate };
+          })
+          .sort((a, b) => b.sessionsAttended - a.sessionsAttended)
+          .slice(0, 20);
+
+        // Revenue: sum paid invoices for these students + outstanding
+        const [paidAgg, unpaidAgg] = await Promise.all([
+          prisma.invoice.aggregate({
+            where: { studentId: { in: studentIds }, status: 'paid' },
+            _sum: { totalAmount: true },
+            _count: { _all: true },
+          }),
+          prisma.invoice.aggregate({
+            where: { studentId: { in: studentIds }, status: { in: ['issued', 'overdue'] } },
+            _sum: { totalAmount: true },
+            _count: { _all: true },
+          }),
+        ]);
+
+        revenue = {
+          totalRevenue: Number(paidAgg._sum.totalAmount ?? 0),
+          paidInvoiceCount: paidAgg._count._all,
+          unpaidAmount: Number(unpaidAgg._sum.totalAmount ?? 0),
+          unpaidInvoiceCount: unpaidAgg._count._all,
+          studentCount: studentIds.length,
+        };
+      }
+    }
+
     return {
       profile: {
         id: teacher.id,
@@ -122,6 +223,8 @@ export class TeacherPortalService {
         classroom: s.classroom,
         status: s.status,
       })),
+      students,
+      revenue,
     };
   }
 
@@ -154,7 +257,7 @@ export class TeacherPortalService {
         id: s.id,
         classId: s.classId,
         className: s.class.name,
-        sessionDate: s.sessionDate,
+        sessionDate: s.sessionDate.toISOString().split('T')[0],
         startTime: s.startTime,
         endTime: s.endTime,
         classroom: s.classroom,

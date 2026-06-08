@@ -12,8 +12,10 @@ export const getDashboard = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const getSchedule = asyncHandler(async (req: Request, res: Response) => {
-  const weekStart = (req.query.weekStart as string) || new Date().toISOString().split('T')[0];
-  const data = await teacherPortalService.getSchedule(req.user!.id, weekStart);
+  const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthStart = (req.query.monthStart as string) || defaultMonth;
+  const data = await teacherPortalService.getSchedule(req.user!.id, monthStart);
   res.json({
     success: true,
     data,

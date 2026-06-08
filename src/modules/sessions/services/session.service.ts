@@ -69,10 +69,17 @@ export class SessionService {
     excludeSessionId?: string;
   }): Promise<string[]> {
     const conflicts: string[] = [];
-    const dateStart = new Date(params.sessionDate);
-    dateStart.setHours(0, 0, 0, 0);
-    const dateEnd = new Date(params.sessionDate);
-    dateEnd.setHours(23, 59, 59, 999);
+    const iso =
+      params.sessionDate instanceof Date
+        ? params.sessionDate.toISOString().split('T')[0]
+        : String(params.sessionDate).slice(0, 10);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!match) return ['Invalid session date'];
+    const y = Number(match[1]);
+    const mo = Number(match[2]);
+    const d = Number(match[3]);
+    const dateStart = new Date(Date.UTC(y, mo - 1, d));
+    const dateEnd = new Date(Date.UTC(y, mo - 1, d, 23, 59, 59, 999));
 
     const sameDaySessions = await prisma.session.findMany({
       where: {
@@ -92,15 +99,11 @@ export class SessionService {
       if (!this.timesOverlap(params.startTime, params.endTime, s.startTime, s.endTime)) {
         continue;
       }
+      const label = `${s.startTime}–${s.endTime} (${s.class.name})`;
       if (s.teacherId === params.teacherUserId) {
-        conflicts.push(
-          `Teacher already has session ${s.startTime}–${s.endTime} (${s.class.name})`
-        );
-      }
-      if (params.classroom && s.classroom === params.classroom) {
-        conflicts.push(
-          `Room ${params.classroom} in use ${s.startTime}–${s.endTime} (${s.class.name})`
-        );
+        conflicts.push(`Trùng lịch dạy: ${label}`);
+      } else if (params.classroom && s.classroom === params.classroom) {
+        conflicts.push(`Phòng ${params.classroom} đã có lịch: ${label}`);
       }
     }
 

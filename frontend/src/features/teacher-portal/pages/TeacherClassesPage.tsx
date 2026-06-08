@@ -1,9 +1,11 @@
 import { Stack, Title, Text, Paper, Group, Badge, SimpleGrid } from '@mantine/core';
 import { IconSchool } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 
 export function TeacherClassesPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['teacher-portal-classes'],
     queryFn: async () => {
@@ -22,17 +24,17 @@ export function TeacherClassesPage() {
 
   return (
     <Stack gap="lg">
-      <Title order={2}>Lớp của tôi</Title>
+      <Title order={2}>{t('portal.teacher.classes.title')}</Title>
       <Text c="dimmed" size="sm">
-        Danh sách lớp bạn đang phụ trách
+        {t('portal.teacher.classes.subtitle')}
       </Text>
 
       {isLoading ? (
-        <Text c="dimmed">Đang tải...</Text>
+        <Text c="dimmed">{t('portal.teacher.classes.loading')}</Text>
       ) : (data?.length ?? 0) === 0 ? (
         <Paper withBorder p="xl" radius="md">
           <Text ta="center" c="dimmed">
-            Chưa được phân công lớp nào.
+            {t('portal.teacher.classes.empty')}
           </Text>
         </Paper>
       ) : (
@@ -44,15 +46,15 @@ export function TeacherClassesPage() {
                   <IconSchool size={20} />
                   <Text fw={600}>{c.className}</Text>
                 </Group>
-                {c.role === 'primary' && <Badge color="blue" size="sm">Chủ nhiệm</Badge>}
+                {c.role === 'primary' && <Badge color="blue" size="sm">{t('portal.teacher.classes.primaryBadge')}</Badge>}
               </Group>
               {c.classroom && (
                 <Text size="sm" c="dimmed">
-                  Phòng: {c.classroom}
+                  {t('portal.teacher.schedule.room', { room: c.classroom })}
                 </Text>
               )}
               <Group mt="md" gap="xs">
-                <Badge variant="light">{c.studentCount} học sinh</Badge>
+                <Badge variant="light">{t('portal.teacher.classes.studentCount', { count: c.studentCount })}</Badge>
                 <Badge variant="outline">{c.status}</Badge>
                 {c.academicLevel && (
                   <Badge variant="outline" color="gray">

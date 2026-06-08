@@ -1,13 +1,21 @@
 import { Stack, Title, Text, Group, Button, Paper } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-react';
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import dayjs from 'dayjs';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { notifications } from '@mantine/notifications';
 import api from '@/lib/api';
-import { WeeklyTimeGrid } from '../components/schedule/WeeklyTimeGrid';
+import { MonthlyTimeGrid } from '../components/schedule/MonthlyTimeGrid';
+import { SessionBlock } from '../components/schedule/SessionBlock';
 import {
   CreateSessionModal,
   formatSessionDateForApi,
@@ -16,35 +24,43 @@ import {
 } from '../components/schedule/CreateSessionModal';
 import { DeleteSessionModal } from '../components/schedule/DeleteSessionModal';
 import type { TeacherScheduleSession } from '../components/schedule/schedule-utils';
-
-function getMonday(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  return dayjs(`${weekStart}T12:00:00`).add(delta * 7, 'day').format('YYYY-MM-DD');
-}
+import {
+  computeMoveFromSlot,
+  getMonthStart,
+  isSameSlot,
+  parseSlotId,
+  shiftMonth,
+} from '../components/schedule/schedule-utils';
 
 export function TeacherSchedulePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
+  const [monthStart, setMonthStart] = useState(() => getMonthStart());
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TeacherScheduleSession | null>(null);
+  const [localSessions, setLocalSessions] = useState<TeacherScheduleSession[]>([]);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [activeSession, setActiveSession] = useState<TeacherScheduleSession | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const { data: scheduleData, isLoading } = useQuery({
-    queryKey: ['teacher-portal-schedule', weekStart],
+    queryKey: ['teacher-portal-schedule', monthStart],
     queryFn: async () => {
-      const res = await api.get(`/teacher-portal/schedule?weekStart=${weekStart}`);
-      return res.data.data as { weekStart: string; sessions: TeacherScheduleSession[] };
+      const res = await api.get(`/teacher-portal/schedule?monthStart=${monthStart}`);
+      return res.data.data as {
+        monthStart: string;
+        monthEnd: string;
+        sessions: TeacherScheduleSession[];
+      };
     },
   });
+
+  useEffect(() => {
+    if (scheduleData?.sessions) {
+      setLocalSessions(scheduleData.sessions);
+    }
+  }, [scheduleData]);
 
   const { data: classesData } = useQuery({
     queryKey: ['teacher-portal-classes'],
@@ -88,27 +104,6 @@ export function TeacherSchedulePage() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async (payload: { id: string; sessionDate: string }) => {
-      await api.put(`/sessions/${payload.id}`, { sessionDate: payload.sessionDate });
-    },
-    onSuccess: () => {
-      notifications.show({
-        title: t('common.success'),
-        message: t('portal.teacher.schedule.moveSuccess'),
-        color: 'green',
-      });
-      invalidateSchedule();
-    },
-    onError: (err: { response?: { data?: { error?: { message?: string } } } }) => {
-      notifications.show({
-        title: t('common.error'),
-        message: err.response?.data?.error?.message ?? t('portal.teacher.schedule.moveFailed'),
-        color: 'red',
-      });
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/sessions/${id}`);
@@ -131,20 +126,79 @@ export function TeacherSchedulePage() {
     },
   });
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || typeof over.id !== 'string' || !over.id.startsWith('day-')) return;
+  const persistMove = useCallback(
+    async (
+      sessionId: string,
+      previous: TeacherScheduleSession[],
+      next: TeacherScheduleSession[]
+    ) => {
+      const moved = next.find((s) => s.id === sessionId);
+      if (!moved) return;
 
-    const newDate = over.id.replace('day-', '');
-    const sessionId = String(active.id);
-    const session = scheduleData?.sessions.find((s) => s.id === sessionId);
-    if (!session || session.sessionDate === newDate) return;
+      setSavingIds((prev) => new Set(prev).add(sessionId));
+      try {
+        await api.put(`/sessions/${sessionId}`, {
+          sessionDate: moved.sessionDate,
+          startTime: moved.startTime,
+          endTime: moved.endTime,
+        });
+        invalidateSchedule();
+      } catch (err: unknown) {
+        setLocalSessions(previous);
+        const message =
+          (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data
+            ?.error?.message ?? t('portal.teacher.schedule.moveFailed');
+        notifications.show({
+          title: t('common.error'),
+          message,
+          color: 'red',
+        });
+      } finally {
+        setSavingIds((prev) => {
+          const n = new Set(prev);
+          n.delete(sessionId);
+          return n;
+        });
+      }
+    },
+    [queryClient, t]
+  );
 
-    updateMutation.mutate({ id: sessionId, sessionDate: newDate });
+  const handleDragStart = (event: DragStartEvent) => {
+    const session = localSessions.find((s) => s.id === String(event.active.id));
+    setActiveSession(session ?? null);
   };
 
-  const weekLabel = `${dayjs(weekStart).format('DD/MM')} – ${dayjs(weekStart).add(6, 'day').format('DD/MM/YYYY')}`;
-  const sessions = scheduleData?.sessions ?? [];
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveSession(null);
+    const { active, over } = event;
+    if (!over || typeof over.id !== 'string') return;
+
+    const slot = parseSlotId(over.id);
+    if (!slot) return;
+
+    const sessionId = String(active.id);
+    const session = localSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+
+    const { sessionDate, startTime, endTime } = computeMoveFromSlot(
+      session,
+      slot.date,
+      slot.startMinutes
+    );
+
+    if (isSameSlot(session, sessionDate, startTime, endTime)) return;
+
+    const previous = localSessions;
+    const next = localSessions.map((s) =>
+      s.id === sessionId ? { ...s, sessionDate, startTime, endTime } : s
+    );
+    setLocalSessions(next);
+    void persistMove(sessionId, previous, next);
+  };
+
+  const handleDragCancel = () => setActiveSession(null);
+
   const classes = classesData ?? [];
 
   return (
@@ -172,39 +226,49 @@ export function TeacherSchedulePage() {
         <Button
           variant="default"
           leftSection={<IconChevronLeft size={16} />}
-          onClick={() => setWeekStart(shiftWeek(weekStart, -1))}
+          onClick={() => setMonthStart(shiftMonth(monthStart, -1))}
         >
-          {t('portal.teacher.schedule.prev')}
+          {t('portal.teacher.schedule.prevMonth')}
         </Button>
-        <Text fw={500}>{weekLabel}</Text>
+        <Button variant="light" onClick={() => setMonthStart(getMonthStart())}>
+          {t('portal.teacher.schedule.thisMonth')}
+        </Button>
         <Button
           variant="default"
           rightSection={<IconChevronRight size={16} />}
-          onClick={() => setWeekStart(shiftWeek(weekStart, 1))}
+          onClick={() => setMonthStart(shiftMonth(monthStart, 1))}
         >
-          {t('portal.teacher.schedule.next')}
-        </Button>
-        <Button variant="light" onClick={() => setWeekStart(getMonday(new Date()))}>
-          {t('portal.teacher.schedule.thisWeek')}
+          {t('portal.teacher.schedule.nextMonth')}
         </Button>
       </Group>
 
       <Paper withBorder p="md" radius="md">
         {isLoading ? (
           <Text c="dimmed">{t('portal.teacher.schedule.loading')}</Text>
-        ) : sessions.length === 0 && classes.length === 0 ? (
+        ) : classes.length === 0 ? (
           <Text c="dimmed">{t('portal.teacher.schedule.noClasses')}</Text>
         ) : (
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <WeeklyTimeGrid
-              weekStart={weekStart}
-              sessions={sessions}
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <MonthlyTimeGrid
+              monthStart={monthStart}
+              sessions={localSessions}
+              savingIds={savingIds}
               onDeleteSession={setDeleteTarget}
             />
+            <DragOverlay dropAnimation={{ duration: 180 }}>
+              {activeSession ? (
+                <SessionBlock session={activeSession} isOverlay />
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
-        {!isLoading && sessions.length === 0 && classes.length > 0 && (
-          <Text c="dimmed" size="sm" mt="md">
+        {!isLoading && localSessions.length === 0 && classes.length > 0 && (
+          <Text c="dimmed" size="sm" mt="md" ta="center">
             {t('portal.teacher.schedule.empty')}
           </Text>
         )}
@@ -214,7 +278,7 @@ export function TeacherSchedulePage() {
         opened={createOpen}
         onClose={() => setCreateOpen(false)}
         classes={classes}
-        defaultDate={weekStart}
+        defaultDate={monthStart}
         loading={createMutation.isPending}
         onSubmit={(values) => createMutation.mutate(values)}
       />

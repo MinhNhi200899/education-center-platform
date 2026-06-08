@@ -228,16 +228,25 @@ export class TeacherPortalService {
     };
   }
 
-  async getSchedule(userId: string, weekStart: string) {
+  async getSchedule(userId: string, monthStart: string) {
     const teacherId = await this.resolveTeacherId(userId);
     const classIds = await this.getClassIds(teacherId);
 
-    const start = new Date(`${weekStart}T00:00:00`);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(monthStart);
+    if (!match) {
+      return { monthStart, monthEnd: monthStart, sessions: [] };
+    }
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const start = new Date(Date.UTC(y, m - 1, 1));
+    const end = new Date(Date.UTC(y, m, 0));
 
     if (classIds.length === 0) {
-      return { weekStart, sessions: [] };
+      return {
+        monthStart: start.toISOString().split('T')[0],
+        monthEnd: end.toISOString().split('T')[0],
+        sessions: [],
+      };
     }
 
     const sessions = await prisma.session.findMany({
@@ -252,7 +261,8 @@ export class TeacherPortalService {
     });
 
     return {
-      weekStart,
+      monthStart: start.toISOString().split('T')[0],
+      monthEnd: end.toISOString().split('T')[0],
       sessions: sessions.map((s) => ({
         id: s.id,
         classId: s.classId,

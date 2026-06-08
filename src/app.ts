@@ -73,6 +73,44 @@ app.get('/health', (_req, res) => {
 // API routes
 app.use('/api/v1', routes);
 
+// Browser navigation to frontend paths on the API host (common misconfiguration)
+const SPA_PATH =
+  /^\/(teacher|portal|dashboard|login|students|teachers|classes|schedule|attendance|evaluations|payments|reports|settings)(\/.*)?$/;
+
+app.get(SPA_PATH, (req: Request, res: Response) => {
+  const frontend = config.frontendUrl;
+  if (frontend) {
+    res.redirect(302, `${frontend}${req.originalUrl}`);
+    return;
+  }
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'NOT_FOUND',
+      message: `Route ${req.method} ${req.path} is a frontend page, not an API endpoint`,
+      hint: 'Open the Vercel web app URL in your browser. API base is /api/v1 (set VITE_API_URL on Vercel).',
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+app.get('/', (req: Request, res: Response) => {
+  const frontend = config.frontendUrl;
+  if (frontend) {
+    res.redirect(302, frontend);
+    return;
+  }
+  res.json({
+    success: true,
+    data: {
+      service: 'Education Center API',
+      health: '/api/v1/health',
+      docs: 'Use the Vercel frontend URL for the web UI',
+    },
+    meta: { timestamp: new Date().toISOString() },
+  });
+});
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({

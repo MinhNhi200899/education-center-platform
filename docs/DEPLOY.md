@@ -57,9 +57,10 @@ PASSWORD_RESET_SECRET=<openssl rand -base64 48>
 SESSION_SECRET=<openssl rand -base64 48>
 ENCRYPTION_KEY=<32 ký tự ngẫu nhiên>
 CORS_ORIGINS=https://your-app.vercel.app
+FRONTEND_URL=https://your-app.vercel.app
 ```
 
-Sau khi deploy Vercel, thêm đúng URL frontend (không dấu `/` cuối).
+Sau khi deploy Vercel, thêm đúng URL frontend (không dấu `/` cuối) vào **cả** `CORS_ORIGINS` và `FRONTEND_URL`.
 
 5. Deploy → copy URL API, ví dụ: `https://ecmp-api.onrender.com`
 
@@ -136,4 +137,5 @@ Production trên Render **không bắt buộc Redis** (auth dùng JWT + DB). `do
 | 502 / timeout Render | Free tier đang wake; đợi hoặc nâng plan |
 | Prisma P1001 | Kiểm tra `DATABASE_URL`, `sslmode=require` |
 | API 404 trên Vercel | Thiếu/sai `VITE_API_URL`; rebuild Vercel |
+| `Route GET /teacher/schedule not found` | Đang mở **URL Render** thay vì **Vercel**; dùng `https://xxx.vercel.app/teacher/schedule`. Set `FRONTEND_URL` trên Render để tự redirect |
 | Login 401 | Chạy `seed-dev.ts` trên DB Neon |

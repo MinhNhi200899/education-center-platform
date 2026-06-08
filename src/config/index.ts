@@ -36,6 +36,12 @@ export const config = {
     lockoutDurationMinutes: 15,
   },
 
+  // Vercel / frontend URL — used to redirect browser hits on API host (e.g. /teacher/schedule)
+  frontendUrl: (
+    process.env.FRONTEND_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+  ).replace(/\/$/, ''),
+
   // CORS (ALLOWED_ORIGINS or CORS_ORIGINS — Vercel URL comma-separated)
   cors: {
     allowedOrigins: (

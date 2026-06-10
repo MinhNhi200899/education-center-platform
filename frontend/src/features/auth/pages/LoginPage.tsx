@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Card, TextInput, PasswordInput, Button, Title, Text, Stack, Alert } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { getHomePath } from '@/lib/roles';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +24,7 @@ export function LoginPage() {
       const loggedInUser = await login(email, password);
       navigate(getHomePath(loggedInUser));
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
+      setError(err.response?.data?.error?.message || t('auth.login.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -42,10 +44,10 @@ export function LoginPage() {
         <Stack gap="lg">
           <div>
             <Title order={2} ta="center" mb={4}>
-              Education Center
+              {t('auth.login.title')}
             </Title>
             <Text c="dimmed" size="sm" ta="center">
-              Sign in to your account
+              {t('auth.login.subtitle')}
             </Text>
           </div>
 
@@ -58,8 +60,8 @@ export function LoginPage() {
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
               <TextInput
-                label="Email"
-                placeholder="your@email.com"
+                label={t('auth.login.email')}
+                placeholder={t('auth.login.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -67,8 +69,8 @@ export function LoginPage() {
               />
 
               <PasswordInput
-                label="Password"
-                placeholder="Your password"
+                label={t('auth.login.password')}
+                placeholder={t('auth.login.passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -76,7 +78,7 @@ export function LoginPage() {
               />
 
               <Button type="submit" fullWidth loading={isLoading} mt="md">
-                Sign In
+                {t('auth.login.submit')}
               </Button>
             </Stack>
           </form>

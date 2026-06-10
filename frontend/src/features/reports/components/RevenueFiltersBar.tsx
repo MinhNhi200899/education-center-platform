@@ -1,12 +1,9 @@
+import { useMemo } from 'react';
 import { Group, Select } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import type { Class, PaginatedResult } from '@/types';
-
-const MONTHS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i + 1),
-  label: `Tháng ${i + 1}`,
-}));
 
 function yearOptions() {
   const y = new Date().getFullYear();
@@ -29,6 +26,17 @@ interface Props {
 }
 
 export function RevenueFiltersBar({ values, onChange, showClassFilter = true }: Props) {
+  const { t } = useTranslation();
+
+  const MONTHS = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        value: String(i + 1),
+        label: t('common.monthShort', { n: i + 1 }),
+      })),
+    [t]
+  );
+
   const { data: classesData } = useQuery({
     queryKey: ['classes', 'filter'],
     queryFn: async () => {
@@ -39,21 +47,21 @@ export function RevenueFiltersBar({ values, onChange, showClassFilter = true }: 
   });
 
   const classOptions = [
-    { value: '', label: 'Tất cả lớp' },
+    { value: '', label: t('reports.filters.allClasses') },
     ...(classesData?.data?.map((c) => ({ value: c.id, label: c.name })) || []),
   ];
 
   return (
     <Group gap="md">
       <Select
-        label="Năm"
+        label={t('reports.filters.year')}
         data={yearOptions()}
         value={String(values.year)}
         onChange={(v) => v && onChange({ ...values, year: Number(v) })}
         w={120}
       />
       <Select
-        label="Tháng"
+        label={t('reports.filters.month')}
         data={MONTHS}
         value={String(values.month)}
         onChange={(v) => v && onChange({ ...values, month: Number(v) })}
@@ -61,7 +69,7 @@ export function RevenueFiltersBar({ values, onChange, showClassFilter = true }: 
       />
       {showClassFilter && (
         <Select
-          label="Lớp"
+          label={t('reports.filters.class')}
           data={classOptions}
           value={values.classId || ''}
           onChange={(v) => onChange({ ...values, classId: v || null })}

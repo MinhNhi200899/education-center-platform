@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Stack,
   Title,
@@ -18,6 +18,8 @@ import {
   IconUsers,
   IconReportMoney,
 } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import { RevenueFiltersBar, type RevenueFilterValues } from '../components/RevenueFiltersBar';
 import {
@@ -25,17 +27,9 @@ import {
   RevenueTrendChart,
   RevenueByStudentTable,
   RevenueByClassList,
-  formatVnd,
 } from '../components/RevenueCharts';
 import { RevenueDrilldownModal } from '../components/RevenueDrilldownModal';
 import type { RevenueReportData, RevenueViewMode, MonthlyReportData, YearlyReportData } from '../types';
-
-const VIEW_TABS: { value: RevenueViewMode; label: string }[] = [
-  { value: 'summary', label: 'Tổng quan' },
-  { value: 'by_class', label: 'Theo lớp' },
-  { value: 'by_student', label: 'Theo học sinh' },
-  { value: 'trend', label: 'Xu hướng' },
-];
 
 function StatMini({ label, value }: { label: string; value: string }) {
   return (
@@ -51,6 +45,8 @@ function StatMini({ label, value }: { label: string; value: string }) {
 }
 
 export function ReportsPage() {
+  const { t } = useTranslation();
+  const { formatVnd } = useLocaleFormatters();
   const now = new Date();
   const [filters, setFilters] = useState<RevenueFilterValues>({
     year: now.getFullYear(),
@@ -59,6 +55,16 @@ export function ReportsPage() {
   });
   const [view, setView] = useState<RevenueViewMode>('summary');
   const [drilldown, setDrilldown] = useState<{ classId: string; className: string } | null>(null);
+
+  const VIEW_TABS: { value: RevenueViewMode; label: string }[] = useMemo(
+    () => [
+      { value: 'summary', label: t('reports.tabs.overview') },
+      { value: 'by_class', label: t('reports.tabs.byClass') },
+      { value: 'by_student', label: t('reports.tabs.byStudent') },
+      { value: 'trend', label: t('reports.tabs.trend') },
+    ],
+    [t]
+  );
 
   const revenueParams = new URLSearchParams({ view, year: String(filters.year) });
   if (view !== 'trend') {
@@ -100,9 +106,9 @@ export function ReportsPage() {
     <Stack gap="lg">
       <Group justify="space-between" align="flex-end">
         <div>
-          <Title order={2}>Báo cáo doanh thu</Title>
+          <Title order={2}>{t('reports.title')}</Title>
           <Text size="sm" c="dimmed" mt={4}>
-            Phân tích thu học phí theo lớp, học sinh và xu hướng
+            {t('reports.subtitle')}
           </Text>
         </div>
         <ThemeIcon size="xl" radius="md" variant="light" color="green">
@@ -116,9 +122,9 @@ export function ReportsPage() {
 
       <Tabs value={view} onChange={(v) => v && setView(v as RevenueViewMode)}>
         <Tabs.List>
-          {VIEW_TABS.map((t) => (
-            <Tabs.Tab key={t.value} value={t.value}>
-              {t.label}
+          {VIEW_TABS.map((tab) => (
+            <Tabs.Tab key={tab.value} value={tab.value}>
+              {tab.label}
             </Tabs.Tab>
           ))}
         </Tabs.List>
@@ -131,17 +137,17 @@ export function ReportsPage() {
           <>
             <Tabs.Panel value="summary" pt="md">
               <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mb="md">
-                <StatMini label="Doanh thu kỳ" value={formatVnd(revenue?.totalRevenue || 0)} />
+                <StatMini label={t('reports.summary.periodRevenue')} value={formatVnd(revenue?.totalRevenue || 0)} />
                 <StatMini
-                  label="Tăng trưởng"
+                  label={t('reports.summary.growth')}
                   value={`${revenue?.growthRate ?? 0}%`}
                 />
                 <StatMini
-                  label="Tỷ lệ thu"
+                  label={t('reports.summary.collectionRate')}
                   value={`${revenue?.collectionRate ?? 0}%`}
                 />
                 <StatMini
-                  label="Công nợ"
+                  label={t('reports.summary.outstanding')}
                   value={formatVnd(revenue?.outstandingAmount || 0)}
                 />
               </SimpleGrid>
@@ -149,14 +155,14 @@ export function ReportsPage() {
                 <Card shadow="sm" padding="lg" radius="md">
                   <Group gap="xs" mb="md">
                     <IconChartPie size={18} />
-                    <Title order={5}>Theo lớp</Title>
+                    <Title order={5}>{t('reports.byClass.byClassHeading')}</Title>
                   </Group>
                   <RevenuePieByClass data={revenue} onClassClick={openDrilldown} />
                 </Card>
                 <Card shadow="sm" padding="lg" radius="md">
                   <Group gap="xs" mb="md">
                     <IconChartLine size={18} />
-                    <Title order={5}>Xu hướng trong tháng</Title>
+                    <Title order={5}>{t('reports.trendHeading')}</Title>
                   </Group>
                   <RevenueTrendChart data={revenue} view="summary" />
                 </Card>
@@ -167,16 +173,16 @@ export function ReportsPage() {
               <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
                 <Card shadow="sm" padding="lg" radius="md">
                   <Title order={5} mb="md">
-                    Biểu đồ tròn theo lớp
+                    {t('reports.byClass.pieChart')}
                   </Title>
                   <RevenuePieByClass data={revenue} onClassClick={openDrilldown} />
                 </Card>
                 <Card shadow="sm" padding="lg" radius="md">
                   <Title order={5} mb="md">
-                    Bảng doanh thu lớp
+                    {t('reports.byClass.tableTitle')}
                   </Title>
                   <Text size="xs" c="dimmed" mb="sm">
-                    Nhấn vào dòng để xem chi tiết học sinh
+                    {t('reports.byClass.clickHint')}
                   </Text>
                   <RevenueByClassList data={revenue} onClassClick={openDrilldown} />
                 </Card>
@@ -187,7 +193,7 @@ export function ReportsPage() {
               <Card shadow="sm" padding="lg" radius="md">
                 <Group gap="xs" mb="md">
                   <IconUsers size={18} />
-                  <Title order={5}>Doanh thu theo học sinh</Title>
+                  <Title order={5}>{t('reports.byStudent.tableTitle')}</Title>
                 </Group>
                 <RevenueByStudentTable data={revenue} />
               </Card>
@@ -196,7 +202,7 @@ export function ReportsPage() {
             <Tabs.Panel value="trend" pt="md">
               <Card shadow="sm" padding="lg" radius="md">
                 <Title order={5} mb="md">
-                  Xu hướng doanh thu
+                  {t('reports.trendTitle')}
                 </Title>
                 <RevenueTrendChart data={revenue} view="trend" height={320} />
               </Card>
@@ -208,20 +214,20 @@ export function ReportsPage() {
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
         <Card shadow="sm" padding="lg" radius="md">
           <Title order={5} mb="md">
-            Báo cáo tháng {filters.month}/{filters.year}
+            {t('reports.monthlyReport', { month: filters.month, year: filters.year })}
           </Title>
           {monthly ? (
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text size="sm">Học sinh hoạt động</Text>
+                <Text size="sm">{t('reports.activeStudents')}</Text>
                 <Text fw={500}>{monthly.summary.totalStudents}</Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Ghi danh mới</Text>
+                <Text size="sm">{t('reports.newEnrollments')}</Text>
                 <Text fw={500}>{monthly.summary.newEnrollments}</Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Điểm danh TB</Text>
+                <Text size="sm">{t('reports.averageAttendance')}</Text>
                 <Text fw={500}>{monthly.summary.averageAttendance}%</Text>
               </Group>
             </Stack>
@@ -231,20 +237,20 @@ export function ReportsPage() {
         </Card>
         <Card shadow="sm" padding="lg" radius="md">
           <Title order={5} mb="md">
-            Báo cáo năm {filters.year}
+            {t('reports.yearlyReport', { year: filters.year })}
           </Title>
           {yearly ? (
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text size="sm">Doanh thu năm</Text>
+                <Text size="sm">{t('reports.yearRevenue')}</Text>
                 <Text fw={500}>{formatVnd(yearly.summary.totalRevenue)}</Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Tăng trưởng</Text>
+                <Text size="sm">{t('reports.summary.growth')}</Text>
                 <Text fw={500}>{yearly.summary.growthRate}%</Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Ghi danh mới</Text>
+                <Text size="sm">{t('reports.newEnrollments')}</Text>
                 <Text fw={500}>{yearly.summary.newEnrollments}</Text>
               </Group>
             </Stack>

@@ -12,6 +12,8 @@ import { useForm } from '@mantine/form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import type { Class } from '@/types';
 
@@ -21,6 +23,8 @@ interface InvoiceGenerateModalProps {
 }
 
 export function InvoiceGenerateModal({ opened, onClose }: InvoiceGenerateModalProps) {
+  const { t } = useTranslation();
+  const { formatVnd } = useLocaleFormatters();
   const queryClient = useQueryClient();
   const monthStart = startOfMonth(new Date());
   const monthEnd = endOfMonth(new Date());
@@ -63,8 +67,8 @@ export function InvoiceGenerateModal({ opened, onClose }: InvoiceGenerateModalPr
     },
     onSuccess: (data) => {
       notifications.show({
-        title: 'Tạo phiếu thu thành công',
-        message: `Đã tạo ${data.generated} phiếu thu (${data.skipped} bỏ qua)`,
+        title: t('payments.generate.successTitle'),
+        message: t('payments.generate.successMessage', { generated: data.generated, skipped: data.skipped }),
         color: 'green',
       });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -72,23 +76,23 @@ export function InvoiceGenerateModal({ opened, onClose }: InvoiceGenerateModalPr
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Lỗi',
-        message: error.response?.data?.error?.message || 'Không thể tạo phiếu thu',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('payments.generate.failed'),
         color: 'red',
       });
     },
   });
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Tạo phiếu thu từ điểm danh" size="md">
+    <Modal opened={opened} onClose={onClose} title={t('payments.generate.title')} size="md">
       <Stack gap="md">
         <Alert color="blue" variant="light">
-          Hệ thống tính học phí theo số buổi có mặt trong kỳ (present/late) × mức phí gói học phí.
+          {t('payments.generate.alert')}
         </Alert>
 
         <Select
-          label="Lớp học"
-          placeholder="Chọn lớp"
+          label={t('payments.generate.class')}
+          placeholder={t('payments.generate.selectClass')}
           data={classes?.map((c) => ({ value: c.id, label: c.name })) || []}
           searchable
           required
@@ -96,11 +100,11 @@ export function InvoiceGenerateModal({ opened, onClose }: InvoiceGenerateModalPr
         />
 
         <Select
-          label="Gói học phí"
-          placeholder="Chọn gói học phí"
+          label={t('payments.generate.tuitionPlan')}
+          placeholder={t('payments.generate.selectPlan')}
           data={plans?.map((p) => ({
             value: p.id,
-            label: `${p.name} (${new Intl.NumberFormat('vi-VN').format(p.amount)} đ/tháng)`,
+            label: `${p.name} (${formatVnd(p.amount)})`,
           })) || []}
           searchable
           required
@@ -109,32 +113,32 @@ export function InvoiceGenerateModal({ opened, onClose }: InvoiceGenerateModalPr
 
         <Group grow>
           <Text size="sm" c="dimmed">
-            Từ: {form.values.periodStart}
+            {t('payments.generate.periodFrom', { date: form.values.periodStart })}
           </Text>
           <Text size="sm" c="dimmed">
-            Đến: {form.values.periodEnd}
+            {t('payments.generate.periodTo', { date: form.values.periodEnd })}
           </Text>
         </Group>
 
         <Switch
-          label="Tính theo tỷ lệ buổi học (prorated)"
+          label={t('payments.generate.prorated')}
           {...form.getInputProps('prorated', { type: 'checkbox' })}
         />
         <Switch
-          label="Phát hành ngay (issued)"
+          label={t('payments.generate.autoIssue')}
           {...form.getInputProps('autoIssue', { type: 'checkbox' })}
         />
 
         <Group justify="flex-end" mt="md">
           <Button variant="default" onClick={onClose}>
-            Hủy
+            {t('payments.generate.cancel')}
           </Button>
           <Button
             loading={generateMutation.isPending}
             onClick={() => generateMutation.mutate()}
             disabled={!form.values.classId || !form.values.tuitionPlanId}
           >
-            Tạo phiếu thu
+            {t('payments.generate.submit')}
           </Button>
         </Group>
       </Stack>

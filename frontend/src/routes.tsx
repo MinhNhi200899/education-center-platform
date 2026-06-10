@@ -112,8 +112,12 @@ function AdminOnlyRoute() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (isStudentUser(user)) return <Navigate to="/portal" replace />;
-  if (isTeacherUser(user)) return <Navigate to="/teacher" replace />;
-  if (!isAdminUser(user)) return <Navigate to={getHomePath(user)} replace />;
+  // Teachers are allowed through; per-route RoleRoute below gates which
+  // admin pages a teacher can actually see (e.g. /attendance, /evaluations,
+  // /payments). isAdminUser still blocks any other non-admin role.
+  if (!isAdminUser(user) && !isTeacherUser(user)) {
+    return <Navigate to={getHomePath(user)} replace />;
+  }
   return <Outlet />;
 }
 
@@ -230,7 +234,7 @@ export const router = createBrowserRouter([
           {
             path: 'attendance',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager']} />
+              <RoleRoute roles={['super_admin', 'teacher']} />
             ),
             children: [
               { index: true, element: <AttendanceHubPage /> },
@@ -244,7 +248,7 @@ export const router = createBrowserRouter([
           {
             path: 'evaluations',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager']} />
+              <RoleRoute roles={['super_admin', 'teacher']} />
             ),
             children: [
               { index: true, element: <EvaluationListPage /> },
@@ -257,7 +261,7 @@ export const router = createBrowserRouter([
           {
             path: 'payments',
             element: (
-              <RoleRoute roles={['super_admin', 'center_manager', 'parent']} />
+              <RoleRoute roles={['super_admin', 'parent', 'teacher']} />
             ),
             children: [
               { index: true, element: <InvoiceListPage /> },

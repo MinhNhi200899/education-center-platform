@@ -1,13 +1,17 @@
 import { Stack, Title, Paper, Table, Text, Badge, Group, Select, Pagination } from '@mantine/core';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { ActionIcon } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import type { AttendanceRecord, Class } from '@/types';
 
 export function AttendanceListPage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocaleFormatters();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [classId, setClassId] = useState<string | null>(null);
@@ -35,11 +39,17 @@ export function AttendanceListPage() {
     },
   });
 
-  const getStatusColor = (s: string) =>
-    ({ present: 'green', absent: 'red', late: 'yellow', excused: 'blue' }[s] || 'gray');
+  const getStatusColor = useMemo(
+    () => ({ present: 'green', absent: 'red', late: 'yellow', excused: 'blue' }),
+    []
+  );
 
-  const statusVi = (s: string) =>
-    ({ present: 'Có', absent: 'Vắng', late: 'Muộn', excused: 'Có phép' }[s] || s);
+  const statusOptions = [
+    { value: 'present', label: t('attendance.status.present') },
+    { value: 'absent', label: t('attendance.status.absent') },
+    { value: 'late', label: t('attendance.status.late') },
+    { value: 'excused', label: t('attendance.status.excused') },
+  ];
 
   return (
     <Stack gap="lg">
@@ -47,13 +57,13 @@ export function AttendanceListPage() {
         <ActionIcon variant="subtle" onClick={() => navigate('/attendance')}>
           <IconArrowLeft size={20} />
         </ActionIcon>
-        <Title order={2}>Lịch sử điểm danh</Title>
+        <Title order={2}>{t('attendance.history.title')}</Title>
       </Group>
 
       <Paper shadow="sm" p="md" radius="md">
         <Group mb="md">
           <Select
-            placeholder="Lọc theo lớp"
+            placeholder={t('attendance.history.filterByClass')}
             data={classes?.map((c) => ({ value: c.id, label: c.name })) || []}
             clearable
             w={220}
@@ -61,13 +71,8 @@ export function AttendanceListPage() {
             onChange={setClassId}
           />
           <Select
-            placeholder="Trạng thái"
-            data={[
-              { value: 'present', label: 'Có' },
-              { value: 'absent', label: 'Vắng' },
-              { value: 'late', label: 'Muộn' },
-              { value: 'excused', label: 'Có phép' },
-            ]}
+            placeholder={t('attendance.history.filterByStatus')}
+            data={statusOptions}
             clearable
             w={150}
             value={status}
@@ -78,11 +83,11 @@ export function AttendanceListPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Ngày</Table.Th>
-              <Table.Th>Lớp</Table.Th>
-              <Table.Th>Học sinh</Table.Th>
-              <Table.Th>Trạng thái</Table.Th>
-              <Table.Th>Lý do</Table.Th>
+              <Table.Th>{t('attendance.history.table.date')}</Table.Th>
+              <Table.Th>{t('attendance.history.table.class')}</Table.Th>
+              <Table.Th>{t('attendance.history.table.student')}</Table.Th>
+              <Table.Th>{t('attendance.history.table.status')}</Table.Th>
+              <Table.Th>{t('attendance.history.table.reason')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -90,7 +95,7 @@ export function AttendanceListPage() {
               <Table.Tr key={record.id}>
                 <Table.Td>
                   {record.session?.sessionDate
-                    ? new Date(record.session.sessionDate).toLocaleDateString('vi-VN')
+                    ? formatDate(record.session.sessionDate)
                     : '-'}
                 </Table.Td>
                 <Table.Td>{record.session?.class?.name || '-'}</Table.Td>
@@ -98,8 +103,8 @@ export function AttendanceListPage() {
                   <Text fw={500}>{record.student?.fullName || '-'}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Badge color={getStatusColor(record.status)} variant="light">
-                    {statusVi(record.status)}
+                  <Badge color={getStatusColor[record.status as keyof typeof getStatusColor] || 'gray'} variant="light">
+                    {t(`attendance.status.${record.status}` as any)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>{record.reason || '-'}</Table.Td>
@@ -110,7 +115,7 @@ export function AttendanceListPage() {
 
         {data?.data?.length === 0 && (
           <Stack align="center" py="xl">
-            <Text c="dimmed">Chưa có bản ghi điểm danh</Text>
+            <Text c="dimmed">{t('attendance.history.empty')}</Text>
           </Stack>
         )}
 

@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { IconBrandGoogleDrive, IconLink } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import type { SessionDetail, SessionStatus } from '../types';
 import { SessionStatusBadge } from './SessionStatusBadge';
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<SessionStatus>('scheduled');
@@ -59,8 +61,8 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
     },
     onError: () => {
       notifications.show({
-        title: 'Lỗi',
-        message: 'Không thể cập nhật buổi học',
+        title: t('common.error'),
+        message: t('schedule.sessionDetail.saveError'),
         color: 'red',
       });
     },
@@ -75,8 +77,8 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
     },
     onSuccess: () => {
       notifications.show({
-        title: 'Đã lưu tài liệu',
-        message: 'Liên kết Google Drive đã được gắn vào buổi học',
+        title: t('schedule.sessionDetail.materialSaved'),
+        message: t('schedule.sessionDetail.materialSavedMessage'),
         color: 'green',
       });
       setDriveUrl('');
@@ -85,8 +87,8 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
     },
     onError: () => {
       notifications.show({
-        title: 'Lỗi',
-        message: 'Không thể thêm tài liệu',
+        title: t('common.error'),
+        message: t('schedule.sessionDetail.materialError'),
         color: 'red',
       });
     },
@@ -118,13 +120,13 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
     <Drawer
       opened={opened}
       onClose={onClose}
-      title="Chi tiết buổi học"
+      title={t('schedule.sessionDetail.title')}
       position="right"
       size="md"
     >
       {isLoading || !session ? (
         <Text c="dimmed" size="sm">
-          Đang tải...
+          {t('schedule.sessionDetail.loading')}
         </Text>
       ) : (
         <Stack gap="md">
@@ -141,34 +143,34 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
 
           {session.teacher && (
             <Text size="sm">
-              Giáo viên: <strong>{session.teacher.fullName}</strong>
+              {t('schedule.sessionDetail.teacher')} <strong>{session.teacher.fullName}</strong>
             </Text>
           )}
 
           <Select
-            label="Trạng thái buổi học"
+            label={t('schedule.sessionDetail.statusLabel')}
             value={status}
             onChange={handleStatusChange}
             data={[
-              { value: 'scheduled', label: 'Đã lên lịch' },
-              { value: 'completed', label: 'Đã dạy' },
-              { value: 'cancelled', label: 'Đã hủy' },
+              { value: 'scheduled', label: t('schedule.sessionDetail.scheduled') },
+              { value: 'completed', label: t('schedule.sessionDetail.completed') },
+              { value: 'cancelled', label: t('schedule.sessionDetail.cancelled') },
             ]}
           />
 
           <Textarea
-            label="Ghi chú buổi dạy"
-            description="Tự động lưu sau khi ngừng gõ"
+            label={t('schedule.sessionDetail.notesLabel')}
+            description={t('schedule.sessionDetail.notesDescription')}
             minRows={4}
             value={notes}
             onChange={(e) => handleNotesChange(e.currentTarget.value)}
           />
 
-          <Divider label="Tài liệu Google Drive" labelPosition="center" />
+          <Divider label={t('schedule.sessionDetail.materialsTitle')} labelPosition="center" />
 
           {session.googleDriveFolderId && (
             <Text size="xs" c="dimmed">
-              Thư mục trung tâm (stub): {session.googleDriveFolderId}
+              {t('schedule.sessionDetail.driveFolderNote', { id: session.googleDriveFolderId })}
             </Text>
           )}
 
@@ -185,14 +187,14 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
           )}
 
           <TextInput
-            label="Liên kết Google Drive"
-            placeholder="https://drive.google.com/file/d/..."
+            label={t('schedule.sessionDetail.driveUrlLabel')}
+            placeholder={t('schedule.sessionDetail.driveUrlPlaceholder')}
             value={driveUrl}
             onChange={(e) => setDriveUrl(e.currentTarget.value)}
             leftSection={<IconBrandGoogleDrive size={16} />}
           />
           <TextInput
-            label="Tên tệp (tuỳ chọn)"
+            label={t('schedule.sessionDetail.fileNameLabel')}
             value={fileName}
             onChange={(e) => setFileName(e.currentTarget.value)}
           />
@@ -201,7 +203,7 @@ export function SessionDetailDrawer({ sessionId, opened, onClose }: Props) {
             loading={materialMutation.isPending}
             disabled={!driveUrl.trim()}
           >
-            Gắn liên kết Drive
+            {t('schedule.sessionDetail.attach')}
           </Button>
         </Stack>
       )}

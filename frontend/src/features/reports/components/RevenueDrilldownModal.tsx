@@ -1,8 +1,9 @@
 import { Modal, Table, Text, Loader, Stack } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import type { RevenueDrilldownData } from '../types';
-import { formatVnd } from './RevenueCharts';
 
 interface Props {
   opened: boolean;
@@ -21,6 +22,9 @@ export function RevenueDrilldownModal({
   year,
   month,
 }: Props) {
+  const { t } = useTranslation();
+  const { formatVnd } = useLocaleFormatters();
+
   const { data, isLoading } = useQuery({
     queryKey: ['reports', 'revenue-drilldown', classId, year, month],
     queryFn: async () => {
@@ -39,7 +43,7 @@ export function RevenueDrilldownModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={`Chi tiết doanh thu — ${className}`}
+      title={t('reports.drilldownTitle', { name: className })}
       size="lg"
     >
       {isLoading ? (
@@ -49,15 +53,15 @@ export function RevenueDrilldownModal({
       ) : (
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            Tổng: {formatVnd(data?.totalRevenue || 0)} · Tháng {month}/{year}
+            {t('reports.totalMonth', { amount: formatVnd(data?.totalRevenue || 0), month, year })}
           </Text>
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Học sinh</Table.Th>
-                <Table.Th ta="right">Doanh thu</Table.Th>
-                <Table.Th ta="center">Phiếu đã thu</Table.Th>
-                <Table.Th>Thanh toán gần nhất</Table.Th>
+                <Table.Th>{t('reports.student')}</Table.Th>
+                <Table.Th ta="right">{t('reports.revenue')}</Table.Th>
+                <Table.Th ta="center">{t('reports.invoicesPaid')}</Table.Th>
+                <Table.Th>{t('reports.lastPayment')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

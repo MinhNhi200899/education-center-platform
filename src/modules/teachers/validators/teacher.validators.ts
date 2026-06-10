@@ -28,8 +28,9 @@ export const createTeacherSchema = z.object({
     hireDate: z
       .string()
       .transform((val) => new Date(val))
-      .refine((date) => !isNaN(date.getTime()), 'Invalid date format'),
-    salary: z.number().positive().optional(),
+      .refine((date) => !isNaN(date.getTime()), 'Invalid date format')
+      .optional(),
+    salary: z.number().min(0).optional(),
     notes: z.string().max(2000).optional(),
   }),
 });
@@ -53,7 +54,7 @@ export const updateTeacherSchema = z.object({
     address: z.string().max(500).optional(),
     qualification: z.string().max(200).optional(),
     specialization: z.string().max(200).optional(),
-    salary: z.number().positive().optional(),
+    salary: z.number().min(0).optional(),
     notes: z.string().max(2000).optional(),
     avatarUrl: z.string().url().optional(),
   }),

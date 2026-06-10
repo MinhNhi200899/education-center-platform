@@ -19,7 +19,7 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   IconArrowLeft,
   IconCheck,
@@ -29,29 +29,28 @@ import {
   IconSend,
   IconCopy,
 } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'gray',
-  issued: 'blue',
-  paid: 'green',
-  overdue: 'red',
-  cancelled: 'gray',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Nháp',
-  issued: 'Đã phát hành',
-  paid: 'Đã thanh toán',
-  overdue: 'Quá hạn',
-  cancelled: 'Đã hủy',
-};
-
 export function PaymentPage() {
+  const { t } = useTranslation();
+  const { formatDate, formatVnd } = useLocaleFormatters();
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [theme, setTheme] = useState<string>('classic');
+
+  const STATUS_COLORS = useMemo(
+    () => ({
+      draft: 'gray',
+      issued: 'blue',
+      paid: 'green',
+      overdue: 'red',
+      cancelled: 'gray',
+    }),
+    []
+  );
 
   const { data: invoice, refetch } = useQuery({
     queryKey: ['invoice', id],
@@ -90,14 +89,14 @@ export function PaymentPage() {
       return response.data.data;
     },
     onSuccess: () => {
-      notifications.show({ title: 'Thành công', message: 'Đã xác nhận thanh toán', color: 'green' });
+      notifications.show({ title: t('payments.payment.paymentSuccessTitle'), message: t('payments.payment.paymentSuccess'), color: 'green' });
       refetch();
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
     onError: (error: any) =>
       notifications.show({
-        title: 'Lỗi',
-        message: error.response?.data?.error?.message || 'Không thể xác nhận',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('payments.payment.paymentFailed'),
         color: 'red',
       }),
   });
@@ -108,7 +107,7 @@ export function PaymentPage() {
       return response.data.data;
     },
     onSuccess: () => {
-      notifications.show({ title: 'Thành công', message: 'Đã phát hành phiếu thu', color: 'green' });
+      notifications.show({ title: t('payments.payment.publishTitle'), message: t('payments.payment.publishTitle'), color: 'green' });
       refetch();
     },
   });
@@ -120,21 +119,18 @@ export function PaymentPage() {
     },
     onSuccess: (data) => {
       notifications.show({
-        title: 'Gửi Zalo (stub)',
-        message: data.note || 'Đã tạo mẫu tin nhắn Zalo',
+        title: t('payments.payment.zaloTemplate'),
+        message: data.note || t('payments.payment.zaloTemplate'),
         color: 'blue',
       });
     },
     onError: (error: any) =>
       notifications.show({
-        title: 'Lỗi',
-        message: error.response?.data?.error?.message || 'Không thể gửi Zalo',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('payments.payment.zaloFailed'),
         color: 'red',
       }),
   });
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
 
   const handlePrint = () => {
     if (!preview?.html) return;
@@ -149,26 +145,26 @@ export function PaymentPage() {
   if (!invoice) {
     return (
       <Stack>
-        <Title>Đang tải...</Title>
+        <Title>{t('payments.payment.loading')}</Title>
       </Stack>
     );
   }
 
   const themeOptions =
-    preview?.themes?.map((t: { id: string; label: string }) => ({ value: t.id, label: t.label })) || [
-      { value: 'classic', label: 'Cổ điển' },
-      { value: 'modern', label: 'Hiện đại' },
-      { value: 'minimal', label: 'Tối giản' },
-      { value: 'colorful', label: 'Màu sắc' },
-      { value: 'formal', label: 'Trang trọng' },
-      { value: 'elegant', label: 'Thanh lịch' },
+    preview?.themes?.map((th: { id: string; label: string }) => ({ value: th.id, label: th.label })) || [
+      { value: 'classic', label: t('payments.payment.theme.classic') },
+      { value: 'modern', label: t('payments.payment.theme.modern') },
+      { value: 'minimal', label: t('payments.payment.theme.minimal') },
+      { value: 'colorful', label: t('payments.payment.theme.colorful') },
+      { value: 'formal', label: t('payments.payment.theme.formal') },
+      { value: 'elegant', label: t('payments.payment.theme.elegant') },
     ];
 
   return (
     <Stack gap="lg">
       <Group>
         <Button variant="light" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate('/payments')}>
-          Quay lại danh sách
+          {t('payments.payment.backToList')}
         </Button>
       </Group>
 
@@ -178,14 +174,14 @@ export function PaymentPage() {
             <Group justify="space-between" mb="lg">
               <div>
                 <Text size="sm" c="dimmed">
-                  Số phiếu thu
+                  {t('payments.payment.invoiceNumber')}
                 </Text>
                 <Text size="xl" fw={700}>
                   {invoice.invoiceNumber}
                 </Text>
               </div>
-              <Badge color={STATUS_COLORS[invoice.status] || 'gray'} size="lg">
-                {STATUS_LABELS[invoice.status] || invoice.status}
+              <Badge color={STATUS_COLORS[invoice.status as keyof typeof STATUS_COLORS] || 'gray'} size="lg">
+                {t(`payments.status.${invoice.status}` as any)}
               </Badge>
             </Group>
 
@@ -193,20 +189,20 @@ export function PaymentPage() {
 
             <Stack gap="md">
               <Group justify="space-between">
-                <Text>Học sinh</Text>
+                <Text>{t('payments.payment.student')}</Text>
                 <Text fw={500}>{invoice.student?.fullName || '-'}</Text>
               </Group>
               <Group justify="space-between">
-                <Text>Gói học phí</Text>
+                <Text>{t('payments.payment.tuitionPlan')}</Text>
                 <Text fw={500}>{invoice.tuitionPlan?.name || '-'}</Text>
               </Group>
               <Group justify="space-between">
-                <Text>Ngày phát hành</Text>
-                <Text fw={500}>{new Date(invoice.issueDate).toLocaleDateString('vi-VN')}</Text>
+                <Text>{t('payments.payment.issueDate')}</Text>
+                <Text fw={500}>{formatDate(invoice.issueDate)}</Text>
               </Group>
               <Group justify="space-between">
-                <Text>Hạn thanh toán</Text>
-                <Text fw={500}>{new Date(invoice.dueDate).toLocaleDateString('vi-VN')}</Text>
+                <Text>{t('payments.payment.dueDate')}</Text>
+                <Text fw={500}>{formatDate(invoice.dueDate)}</Text>
               </Group>
             </Stack>
 
@@ -216,22 +212,22 @@ export function PaymentPage() {
               {invoice.items?.map((item: { id: string; description: string; quantity: number; amount: number }) => (
                 <Group key={item.id} justify="space-between">
                   <Text size="sm">
-                    {item.description} (×{item.quantity})
+                    {t('payments.payment.itemsDescription', { description: item.description, quantity: item.quantity })}
                   </Text>
-                  <Text fw={500}>{formatCurrency(item.amount)}</Text>
+                  <Text fw={500}>{formatVnd(item.amount)}</Text>
                 </Group>
               ))}
               <Group justify="space-between">
-                <Text>Giảm giá</Text>
-                <Text fw={500}>{formatCurrency(invoice.discount)}</Text>
+                <Text>{t('payments.payment.discount')}</Text>
+                <Text fw={500}>{formatVnd(invoice.discount)}</Text>
               </Group>
               <Divider />
               <Group justify="space-between">
                 <Text size="lg" fw={600}>
-                  Tổng cộng
+                  {t('payments.payment.total')}
                 </Text>
                 <Text size="lg" fw={700} c="green">
-                  {formatCurrency(invoice.totalAmount)}
+                  {formatVnd(invoice.totalAmount)}
                 </Text>
               </Group>
             </Stack>
@@ -244,7 +240,7 @@ export function PaymentPage() {
                   loading={issueMutation.isPending}
                   onClick={() => issueMutation.mutate()}
                 >
-                  Phát hành
+                  {t('payments.payment.issue')}
                 </Button>
               )}
               {invoice.status !== 'paid' && (
@@ -254,7 +250,7 @@ export function PaymentPage() {
                     loading={confirmMutation.isPending}
                     onClick={() => confirmMutation.mutate()}
                   >
-                    Xác nhận TT (tiền mặt)
+                    {t('payments.payment.confirmCash')}
                   </Button>
                   <Button
                     variant="light"
@@ -263,7 +259,7 @@ export function PaymentPage() {
                     loading={zaloMutation.isPending}
                     onClick={() => zaloMutation.mutate()}
                   >
-                    Gửi Zalo
+                    {t('payments.payment.sendZalo')}
                   </Button>
                 </>
               )}
@@ -272,11 +268,11 @@ export function PaymentPage() {
 
           <Paper shadow="sm" p="lg" radius="md" mt="md">
             <Group justify="space-between" mb="md">
-              <Title order={4}>Xem trước phiếu thu</Title>
+              <Title order={4}>{t('payments.payment.preview')}</Title>
               <Group>
                 <Select data={themeOptions} value={theme} onChange={(v) => setTheme(v || 'classic')} w={160} />
                 <Button variant="light" leftSection={<IconPrinter size={16} />} onClick={handlePrint}>
-                  In / Tải
+                  {t('payments.payment.print')}
                 </Button>
               </Group>
             </Group>
@@ -300,18 +296,18 @@ export function PaymentPage() {
             <Paper shadow="sm" p="lg" radius="md" mb="md">
               <Group mb="md">
                 <IconQrcode size={20} />
-                <Title order={4}>Thanh toán VietQR</Title>
+                <Title order={4}>{t('payments.payment.vietqrTitle')}</Title>
               </Group>
               <Stack align="center" gap="sm">
                 <Image src={vietqr.qrCodeUrl} alt="VietQR" w={200} radius="md" />
                 <Text size="sm" c="dimmed" ta="center">
                   {vietqr.receiverName} · {vietqr.receiverBank}
                 </Text>
-                <Text fw={600}>{formatCurrency(vietqr.amount)}</Text>
+                <Text fw={600}>{formatVnd(vietqr.amount)}</Text>
                 <Group gap="xs">
                   <CopyButton value={vietqr.qrCodeUrl}>
                     {({ copied, copy }) => (
-                      <Tooltip label={copied ? 'Đã copy' : 'Copy link QR'}>
+                      <Tooltip label={copied ? t('payments.payment.copyCopied') : t('payments.payment.copyLink')}>
                         <ActionIcon variant="light" onClick={copy}>
                           <IconCopy size={16} />
                         </ActionIcon>
@@ -319,7 +315,7 @@ export function PaymentPage() {
                     )}
                   </CopyButton>
                   <Button size="xs" variant="light" onClick={() => refetchQr()}>
-                    Làm mới QR
+                    {t('payments.payment.refresh')}
                   </Button>
                 </Group>
               </Stack>
@@ -328,24 +324,24 @@ export function PaymentPage() {
 
           <Paper shadow="sm" p="lg" radius="md">
             <Title order={4} mb="md">
-              Lịch sử thanh toán
+              {t('payments.payment.paymentHistory')}
             </Title>
             {invoice.payments?.length ? (
               <Stack gap="sm">
                 {invoice.payments.map((payment: { id: string; transactionDate: string; paymentMethod: string; amount: number; status: string }) => (
                   <Card key={payment.id} withBorder padding="sm">
                     <Text size="sm" fw={500}>
-                      {new Date(payment.transactionDate).toLocaleString('vi-VN')}
+                      {new Date(payment.transactionDate).toLocaleString()}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {payment.paymentMethod} · {formatCurrency(payment.amount)} · {payment.status}
+                      {payment.paymentMethod} · {formatVnd(payment.amount)} · {payment.status}
                     </Text>
                   </Card>
                 ))}
               </Stack>
             ) : (
               <Text c="dimmed" size="sm">
-                Chưa có thanh toán
+                {t('payments.payment.noPayments')}
               </Text>
             )}
           </Paper>
@@ -353,7 +349,7 @@ export function PaymentPage() {
           {zaloMutation.data && (
             <Paper shadow="sm" p="lg" radius="md" mt="md">
               <Title order={5} mb="sm">
-                Mẫu tin Zalo
+                {t('payments.payment.zaloTemplateTitle')}
               </Title>
               <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
                 {zaloMutation.data.messageTemplate}

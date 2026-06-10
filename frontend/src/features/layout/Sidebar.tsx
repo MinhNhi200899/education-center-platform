@@ -1,5 +1,6 @@
 import { NavLink, Stack, Text, Divider, Box } from '@mantine/core';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   IconLayoutDashboard,
   IconUsers,
@@ -18,40 +19,44 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isStudentUser, isTeacherUser } from '@/lib/roles';
 
 interface NavItem {
-  label: string;
+  key: string;
   icon: React.ElementType;
   path: string;
   roles?: string[];
 }
 
 const studentNavItems: NavItem[] = [
-  { label: 'Trang chủ', icon: IconHome, path: '/portal' },
-  { label: 'Lịch học của tôi', icon: IconCalendarEvent, path: '/portal/schedule' },
-  { label: 'Học phí & thông báo', icon: IconReceipt, path: '/portal/tuition' },
+  { key: 'nav.home', icon: IconHome, path: '/portal' },
+  { key: 'nav.mySchedule', icon: IconCalendarEvent, path: '/portal/schedule' },
+  { key: 'nav.myTuition', icon: IconReceipt, path: '/portal/tuition' },
 ];
 
 const teacherNavItems: NavItem[] = [
-  { label: 'Trang chủ', icon: IconHome, path: '/teacher' },
-  { label: 'Lịch dạy của tôi', icon: IconCalendarEvent, path: '/teacher/schedule' },
-  { label: 'Lớp của tôi', icon: IconSchool, path: '/teacher/classes' },
+  { key: 'nav.home', icon: IconHome, path: '/teacher' },
+  { key: 'nav.mySchedule', icon: IconCalendarEvent, path: '/teacher/schedule' },
+  { key: 'nav.myClasses', icon: IconSchool, path: '/teacher/classes' },
+  { key: 'nav.attendance', icon: IconCalendar, path: '/attendance' },
+  { key: 'nav.evaluations', icon: IconClipboardCheck, path: '/evaluations' },
+  { key: 'nav.payments', icon: IconReceipt, path: '/payments' },
 ];
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard', roles: ['super_admin', 'center_manager'] },
-  { label: 'Students', icon: IconUsers, path: '/students', roles: ['super_admin', 'center_manager'] },
-  { label: 'Teachers', icon: IconUser, path: '/teachers', roles: ['super_admin', 'center_manager'] },
-  { label: 'Classes', icon: IconSchool, path: '/classes', roles: ['super_admin', 'center_manager'] },
-  { label: 'Lịch dạy', icon: IconCalendarEvent, path: '/schedule', roles: ['super_admin', 'center_manager'] },
-  { label: 'Attendance', icon: IconCalendar, path: '/attendance', roles: ['super_admin', 'center_manager'] },
-  { label: 'Nhận xét HS', icon: IconClipboardCheck, path: '/evaluations', roles: ['super_admin', 'center_manager'] },
-  { label: 'Phiếu thu', icon: IconReceipt, path: '/payments', roles: ['super_admin', 'center_manager', 'parent'] },
-  { label: 'Báo cáo', icon: IconReport, path: '/reports', roles: ['super_admin', 'center_manager'] },
+  { key: 'nav.dashboard', icon: IconLayoutDashboard, path: '/dashboard', roles: ['super_admin', 'center_manager'] },
+  { key: 'nav.students', icon: IconUsers, path: '/students', roles: ['super_admin', 'center_manager'] },
+  { key: 'nav.teachers', icon: IconUser, path: '/teachers', roles: ['super_admin', 'center_manager'] },
+  { key: 'nav.classes', icon: IconSchool, path: '/classes', roles: ['super_admin', 'center_manager'] },
+  { key: 'nav.schedule', icon: IconCalendarEvent, path: '/schedule', roles: ['super_admin', 'center_manager'] },
+  { key: 'nav.attendance', icon: IconCalendar, path: '/attendance', roles: ['super_admin', 'teacher'] },
+  { key: 'nav.evaluations', icon: IconClipboardCheck, path: '/evaluations', roles: ['super_admin', 'teacher'] },
+  { key: 'nav.payments', icon: IconReceipt, path: '/payments', roles: ['super_admin', 'parent', 'teacher'] },
+  { key: 'nav.reports', icon: IconReport, path: '/reports', roles: ['super_admin', 'center_manager'] },
 ];
 
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const filteredNavItems = isStudentUser(user)
     ? studentNavItems
@@ -65,13 +70,13 @@ export function Sidebar() {
   return (
     <Stack p="md" gap="xs">
       <Text size="xs" fw={600} c="dimmed" tt="uppercase">
-        Menu
+        {t('common.menu')}
       </Text>
 
       {filteredNavItems.map((item) => (
         <NavLink
           key={item.path}
-          label={item.label}
+          label={t(item.key)}
           leftSection={<item.icon size={20} stroke={1.5} />}
           active={location.pathname === item.path || location.pathname.startsWith(item.path + '/')}
           onClick={() => navigate(item.path)}
@@ -84,17 +89,17 @@ export function Sidebar() {
       {user?.roles?.some((r) => ['super_admin', 'center_manager'].includes(r)) && (
         <>
           <Text size="xs" fw={600} c="dimmed" tt="uppercase">
-            Settings
+            {t('common.settings')}
           </Text>
           <NavLink
-            label="QR Payments"
+            label={t('nav.paymentSettings')}
             leftSection={<IconQrcode size={20} stroke={1.5} />}
             active={location.pathname.startsWith('/settings/payments')}
             onClick={() => navigate('/settings/payments')}
             style={{ borderRadius: 8 }}
           />
           <NavLink
-            label="Roles & Permissions"
+            label={t('nav.rolesPermissions')}
             leftSection={<IconShield size={20} stroke={1.5} />}
             active={location.pathname.startsWith('/settings/roles')}
             onClick={() => navigate('/settings/roles')}
@@ -106,10 +111,10 @@ export function Sidebar() {
 
       <Box>
         <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb="xs">
-          Center
+          {t('common.center')}
         </Text>
         <Text size="sm" c="dimmed">
-          {user?.center?.name || 'No center assigned'}
+          {user?.center?.name || t('common.noCenter')}
         </Text>
       </Box>
     </Stack>

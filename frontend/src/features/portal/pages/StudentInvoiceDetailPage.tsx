@@ -2,20 +2,24 @@ import { Stack, Title, Text, Paper, Group, Button, Badge } from '@mantine/core';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { IconArrowLeft } from '@tabler/icons-react';
-import dayjs from 'dayjs';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 
-const formatVnd = (n: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
-
-const STATUS: Record<string, { label: string; color: string }> = {
-  issued: { label: 'Chờ thanh toán', color: 'blue' },
-  paid: { label: 'Đã thanh toán', color: 'green' },
-  overdue: { label: 'Quá hạn', color: 'red' },
-};
-
 export function StudentInvoiceDetailPage() {
+  const { t } = useTranslation();
+  const { formatDate, formatVnd } = useLocaleFormatters();
   const { id } = useParams();
+
+  const STATUS = useMemo(
+    () => ({
+      issued: { label: t('payments.status.pending'), color: 'blue' },
+      paid: { label: t('payments.status.paid'), color: 'green' },
+      overdue: { label: t('payments.status.overdue'), color: 'red' },
+    }),
+    [t]
+  );
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['portal-invoice', id],
@@ -26,7 +30,7 @@ export function StudentInvoiceDetailPage() {
     enabled: !!id,
   });
 
-  const st = invoice ? STATUS[invoice.status] ?? { label: invoice.status, color: 'gray' } : null;
+  const st = invoice ? STATUS[invoice.status as keyof typeof STATUS] ?? { label: invoice.status, color: 'gray' } : null;
 
   return (
     <Stack gap="lg">
@@ -37,13 +41,13 @@ export function StudentInvoiceDetailPage() {
         leftSection={<IconArrowLeft size={16} />}
         w="fit-content"
       >
-        Quay lại học phí
+        {t('portal.student.invoiceDetail.back')}
       </Button>
 
       {isLoading ? (
-        <Text c="dimmed">Đang tải...</Text>
+        <Text c="dimmed">{t('portal.student.invoiceDetail.loading')}</Text>
       ) : !invoice ? (
-        <Text c="red">Không tìm thấy phiếu thu.</Text>
+        <Text c="red">{t('portal.student.invoiceDetail.notFound')}</Text>
       ) : (
         <Paper withBorder p="lg" radius="md">
           <Group justify="space-between" mb="md">
@@ -53,34 +57,34 @@ export function StudentInvoiceDetailPage() {
           <Stack gap="xs">
             <Text>
               <Text span c="dimmed">
-                Học sinh:{' '}
+                {t('portal.student.invoiceDetail.student')}{' '}
               </Text>
               {invoice.student?.fullName}
             </Text>
             <Text>
               <Text span c="dimmed">
-                Ngày phát hành:{' '}
+                {t('portal.student.invoiceDetail.issueDate')}{' '}
               </Text>
-              {dayjs(invoice.issueDate).format('DD/MM/YYYY')}
+              {formatDate(invoice.issueDate)}
             </Text>
             <Text>
               <Text span c="dimmed">
-                Hạn thanh toán:{' '}
+                {t('portal.student.invoiceDetail.dueDate')}{' '}
               </Text>
-              {dayjs(invoice.dueDate).format('DD/MM/YYYY')}
+              {formatDate(invoice.dueDate)}
             </Text>
             <Text fw={700} size="lg" mt="sm">
-              Tổng: {formatVnd(invoice.totalAmount)}
+              {t('portal.student.invoiceDetail.total')} {formatVnd(invoice.totalAmount)}
             </Text>
             <Text>
-              Đã thanh toán: {formatVnd(invoice.paidAmount)}
+              {t('portal.student.invoiceDetail.paid')} {formatVnd(invoice.paidAmount)}
             </Text>
             <Text c="orange" fw={600}>
-              Còn lại: {formatVnd(invoice.amountDue)}
+              {t('portal.student.invoiceDetail.remaining')} {formatVnd(invoice.amountDue)}
             </Text>
           </Stack>
           <Text size="sm" c="dimmed" mt="lg">
-            Vui lòng thanh toán theo hướng dẫn của trung tâm hoặc liên hệ phụ huynh / kế toán để nhận mã QR.
+            {t('portal.student.invoiceDetail.intro')}
           </Text>
         </Paper>
       )}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStudentUser } from '@/lib/roles';
 import {
@@ -45,6 +46,7 @@ function StatCard({
   icon: React.ElementType;
   color: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Card shadow="sm" padding="lg" radius="md">
       <Group justify="space-between" mb="xs">
@@ -69,7 +71,7 @@ function StatCard({
             {Math.abs(change)}%
           </Text>
           <Text size="xs" c="dimmed">
-            so với kỳ trước
+            {t('dashboard.vsPrevious')}
           </Text>
         </Group>
       )}
@@ -78,6 +80,7 @@ function StatCard({
 }
 
 export function DashboardPage() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -136,7 +139,7 @@ export function DashboardPage() {
 
   return (
     <Stack gap="lg">
-      <Title order={2}>Bảng điều khiển</Title>
+      <Title order={2}>{t('dashboard.title')}</Title>
 
       <Card shadow="sm" padding="md" radius="md">
         <RevenueFiltersBar values={filters} onChange={setFilters} />
@@ -144,15 +147,15 @@ export function DashboardPage() {
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
         <StatCard
-          title="Doanh thu tháng"
-          value={formatVnd(revenueData?.totalRevenue || 0)}
+          title={t('dashboard.monthlyRevenue')}
+          value={formatVnd(revenueData?.totalRevenue || 0, i18n.language)}
           change={revenueData?.growthRate}
           changeType={(revenueData?.growthRate ?? 0) >= 0 ? 'increase' : 'decrease'}
           icon={IconCurrencyDollar}
           color="green"
         />
         <StatCard
-          title="Học sinh hoạt động"
+          title={t('dashboard.activeStudents')}
           value={studentData?.activeStudents || 0}
           change={studentData?.growthRate}
           changeType={(studentData?.growthRate ?? 0) >= 0 ? 'increase' : 'decrease'}
@@ -160,13 +163,13 @@ export function DashboardPage() {
           color="blue"
         />
         <StatCard
-          title="Lớp học"
+          title={t('dashboard.classes')}
           value={revenueData?.byClass?.length || studentData?.byClass?.length || 0}
           icon={IconSchool}
           color="violet"
         />
         <StatCard
-          title="Tỷ lệ thu"
+          title={t('dashboard.collectionRate')}
           value={`${(revenueData?.collectionRate ?? collectionData?.collectionRate ?? 0).toFixed(1)}%`}
           icon={IconReceipt}
           color="orange"
@@ -177,7 +180,7 @@ export function DashboardPage() {
         <Grid.Col span={{ base: 12, lg: 8 }}>
           <Card shadow="sm" padding="lg" radius="md">
             <Title order={4} mb="md">
-              Xu hướng doanh thu
+              {t('dashboard.revenueTrend')}
             </Title>
             <RevenueTrendChart data={revenueData} view="summary" height={260} />
           </Card>
@@ -186,7 +189,7 @@ export function DashboardPage() {
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card shadow="sm" padding="lg" radius="md">
             <Title order={4} mb="md">
-              Doanh thu theo lớp
+              {t('dashboard.revenueByClass')}
             </Title>
             <RevenuePieByClass
               data={revenueData}
@@ -201,7 +204,7 @@ export function DashboardPage() {
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card shadow="sm" padding="lg" radius="md">
             <Title order={4} mb="md">
-              Tỷ lệ điểm danh
+              {t('dashboard.attendanceRate')}
             </Title>
             <Stack align="center" gap="md" py="md">
               <RingProgress
@@ -220,19 +223,19 @@ export function DashboardPage() {
               <Group gap="xl">
                 <Stack gap={4} align="center">
                   <Text size="xs" c="dimmed">
-                    Có mặt
+                    {t('dashboard.present')}
                   </Text>
                   <Text fw={600}>{attendanceData?.byStatus?.present || 0}</Text>
                 </Stack>
                 <Stack gap={4} align="center">
                   <Text size="xs" c="dimmed">
-                    Vắng
+                    {t('dashboard.absent')}
                   </Text>
                   <Text fw={600}>{attendanceData?.byStatus?.absent || 0}</Text>
                 </Stack>
                 <Stack gap={4} align="center">
                   <Text size="xs" c="dimmed">
-                    Muộn
+                    {t('dashboard.late')}
                   </Text>
                   <Text fw={600}>{attendanceData?.byStatus?.late || 0}</Text>
                 </Stack>
@@ -244,7 +247,7 @@ export function DashboardPage() {
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card shadow="sm" padding="lg" radius="md">
             <Title order={4} mb="md">
-              Học sinh theo lớp
+              {t('dashboard.studentsByClass')}
             </Title>
             <Stack gap="sm">
               {studentData?.byClass?.slice(0, 5).map((item) => (
@@ -256,7 +259,7 @@ export function DashboardPage() {
                 </Group>
               )) || (
                 <Text c="dimmed" size="sm">
-                  Chưa có dữ liệu lớp
+                  {t('dashboard.noClassData')}
                 </Text>
               )}
             </Stack>
@@ -266,23 +269,23 @@ export function DashboardPage() {
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card shadow="sm" padding="lg" radius="md">
             <Title order={4} mb="md">
-              Trạng thái phiếu thu
+              {t('dashboard.invoiceStatus')}
             </Title>
             <Stack gap="sm">
               <Group justify="space-between">
-                <Text size="sm">Đã thu</Text>
+                <Text size="sm">{t('dashboard.paid')}</Text>
                 <Text size="sm" fw={500} c="green">
                   {collectionData?.paidInvoices || 0}
                 </Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Đã phát hành</Text>
+                <Text size="sm">{t('dashboard.issued')}</Text>
                 <Text size="sm" fw={500} c="blue">
                   {collectionData?.issuedInvoices || 0}
                 </Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Quá hạn</Text>
+                <Text size="sm">{t('dashboard.overdue')}</Text>
                 <Text size="sm" fw={500} c="red">
                   {collectionData?.overdueInvoices || 0}
                 </Text>

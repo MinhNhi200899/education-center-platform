@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconDeviceFloppy, IconCalendarPlus } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import type { AttendanceStatus } from '@/types';
 
@@ -47,15 +48,8 @@ function cellColor(status: AttendanceStatus | null | undefined) {
   return '#f8f9fa';
 }
 
-function cellLabel(status: AttendanceStatus | null | undefined) {
-  if (status === 'present') return 'C';
-  if (status === 'absent') return 'V';
-  if (status === 'late') return 'M';
-  if (status === 'excused') return 'P';
-  return '';
-}
-
 export function AttendanceMonthlyPage() {
+  const { t } = useTranslation();
   const { classId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -65,6 +59,14 @@ export function AttendanceMonthlyPage() {
   const [localCells, setLocalCells] = useState<Record<CellKey, AttendanceStatus>>({});
   const [dragStatus, setDragStatus] = useState<AttendanceStatus | null>(null);
   const isDragging = useRef(false);
+
+  const cellLabel = (status: AttendanceStatus | null | undefined): string => {
+    if (status === 'present') return t('attendance.monthly.presentShort');
+    if (status === 'absent') return t('attendance.monthly.absentShort');
+    if (status === 'late') return t('attendance.monthly.lateShort');
+    if (status === 'excused') return t('attendance.monthly.excusedShort');
+    return '';
+  };
 
   const { data: grid, refetch } = useQuery({
     queryKey: ['attendance-monthly', classId, year, month],
@@ -92,8 +94,8 @@ export function AttendanceMonthlyPage() {
     },
     onSuccess: () => {
       notifications.show({
-        title: 'Đã tạo buổi học',
-        message: 'Buổi học trong tháng đã được sinh từ lịch lớp',
+        title: t('attendance.monthly.generatedTitle'),
+        message: t('attendance.monthly.generatedMessage'),
         color: 'green',
       });
       refetch();
@@ -110,7 +112,7 @@ export function AttendanceMonthlyPage() {
       await api.post('/attendance/monthly-bulk', { classId, records });
     },
     onSuccess: () => {
-      notifications.show({ title: 'Đã lưu', message: 'Điểm danh tháng đã lưu', color: 'green' });
+      notifications.show({ title: t('attendance.monthly.savedTitle'), message: t('attendance.monthly.savedMessage'), color: 'green' });
       queryClient.invalidateQueries({ queryKey: ['attendance-monthly'] });
     },
   });
@@ -154,7 +156,7 @@ export function AttendanceMonthlyPage() {
           <IconArrowLeft size={20} />
         </ActionIcon>
         <div style={{ flex: 1 }}>
-          <Title order={2}>Điểm danh cả tháng</Title>
+          <Title order={2}>{t('attendance.monthly.title')}</Title>
           <Text c="dimmed">{grid?.className || '...'}</Text>
         </div>
       </Group>
@@ -162,17 +164,17 @@ export function AttendanceMonthlyPage() {
       <Paper p="md" radius="md" withBorder>
         <Group>
           <Select
-            label="Năm"
+            label={t('common.year')}
             data={['2024', '2025', '2026', '2027'].map((y) => ({ value: y, label: y }))}
             value={String(year)}
             onChange={(v) => v && setYear(parseInt(v, 10))}
             w={100}
           />
           <Select
-            label="Tháng"
+            label={t('attendance.monthly.month')}
             data={Array.from({ length: 12 }, (_, i) => ({
               value: String(i + 1),
-              label: `Tháng ${i + 1}`,
+              label: t('common.monthShort', { n: i + 1 }),
             }))}
             value={String(month)}
             onChange={(v) => v && setMonth(parseInt(v, 10))}
@@ -185,7 +187,7 @@ export function AttendanceMonthlyPage() {
             onClick={() => prepareMutation.mutate()}
             mt={24}
           >
-            Tạo buổi từ lịch lớp
+            {t('attendance.monthly.generate')}
           </Button>
           <Button
             leftSection={<IconDeviceFloppy size={16} />}
@@ -194,21 +196,21 @@ export function AttendanceMonthlyPage() {
             mt={24}
             disabled={!grid?.sessions?.length}
           >
-            Lưu tháng
+            {t('attendance.monthly.saveMonth')}
           </Button>
         </Group>
         <Group mt="xs" gap="xs">
-          <Badge color="green">C = Có</Badge>
-          <Badge color="red">V = Vắng</Badge>
+          <Badge color="green">{t('attendance.monthly.presentShort')} = {t('attendance.status.present')}</Badge>
+          <Badge color="red">{t('attendance.monthly.absentShort')} = {t('attendance.status.absent')}</Badge>
           <Text size="xs" c="dimmed">
-            Click ô để đổi; giữ chuột và kéo để điền hàng loạt
+            {t('attendance.monthly.hint')}
           </Text>
         </Group>
       </Paper>
 
       {!grid?.sessions?.length ? (
         <Text c="dimmed" ta="center" py="xl">
-          Chưa có buổi học trong tháng. Bấm &quot;Tạo buổi từ lịch lớp&quot; trước.
+          {t('attendance.monthly.empty')}
         </Text>
       ) : (
         <ScrollArea>
@@ -216,7 +218,7 @@ export function AttendanceMonthlyPage() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 2 }}>
-                  Học sinh
+                  {t('attendance.monthly.studentColumn')}
                 </Table.Th>
                 {grid.sessions.map((s) => (
                   <Table.Th key={s.id} style={{ minWidth: 36, textAlign: 'center', fontSize: 11 }}>

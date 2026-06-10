@@ -135,6 +135,7 @@ async function main() {
   await ensurePermission('sessions.read', 'sessions', 1, 'View sessions');
   await ensurePermission('sessions.create', 'sessions', 2, 'Create sessions');
   await ensurePermission('sessions.update', 'sessions', 3, 'Update sessions');
+  await ensurePermission('sessions.delete', 'sessions', 4, 'Delete sessions');
 
   const centerManagerRole = await prisma.role.upsert({
     where: { name: 'center_manager' },
@@ -304,10 +305,16 @@ async function main() {
       'schedule.read',
       'schedule.create',
       'sessions.read',
+      'sessions.create',
       'sessions.update',
+      'sessions.delete',
       'evaluations.read',
       'evaluations.create',
       'evaluations.update',
+      'payments.read',
+      'tuition.read',
+      'tuition.create',
+      'tuition.update',
     ]);
   }
 

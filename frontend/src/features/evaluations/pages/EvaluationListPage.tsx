@@ -11,20 +11,15 @@ import {
   Select,
   SimpleGrid,
 } from '@mantine/core';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { IconPlus, IconEye, IconUsers } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
-import type { Evaluation, EvaluationType } from '@/types';
+import type { Evaluation } from '@/types';
 import { EvaluationBulkModal } from '../components/EvaluationBulkModal';
-
-const TYPE_LABELS: Record<EvaluationType, string> = {
-  daily: 'Buổi học',
-  weekly: 'Tuần',
-  monthly: 'Tháng',
-  term: 'Học kỳ',
-};
 
 const TYPE_COLORS: Record<string, string> = {
   daily: 'green',
@@ -33,12 +28,9 @@ const TYPE_COLORS: Record<string, string> = {
   term: 'orange',
 };
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i + 1),
-  label: `Tháng ${i + 1}`,
-}));
-
 export function EvaluationListPage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocaleFormatters();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [classId, setClassId] = useState<string | null>(null);
@@ -46,6 +38,16 @@ export function EvaluationListPage() {
   const [year, setYear] = useState<string | null>(String(new Date().getFullYear()));
   const [evaluationType, setEvaluationType] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+
+  const TYPE_LABELS = useMemo(
+    () => ({
+      daily: t('evaluations.types.daily'),
+      weekly: t('evaluations.types.weekly'),
+      monthly: t('evaluations.types.monthly'),
+      term: t('evaluations.types.term'),
+    }),
+    [t]
+  );
 
   const { data: classes } = useQuery({
     queryKey: ['classes-select-eval-list'],
@@ -71,6 +73,15 @@ export function EvaluationListPage() {
     },
   });
 
+  const MONTHS = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        value: String(i + 1),
+        label: t('common.monthShort', { n: i + 1 }),
+      })),
+    [t]
+  );
+
   const years = Array.from({ length: 5 }, (_, i) => {
     const y = new Date().getFullYear() - i;
     return { value: String(y), label: String(y) };
@@ -80,9 +91,9 @@ export function EvaluationListPage() {
     <Stack gap="lg">
       <Group justify="space-between" align="flex-end">
         <div>
-          <Title order={2}>Nhận xét học sinh</Title>
+          <Title order={2}>{t('evaluations.list.title')}</Title>
           <Text c="dimmed" size="sm">
-            Theo dõi điểm Nói/Viết, thái độ và lịch sử theo tháng
+            {t('evaluations.list.subtitle')}
           </Text>
         </div>
         <Group>
@@ -91,13 +102,13 @@ export function EvaluationListPage() {
             leftSection={<IconUsers size={16} />}
             onClick={() => setBulkOpen(true)}
           >
-            Nhận xét cả lớp
+            {t('evaluations.list.bulk')}
           </Button>
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => navigate('/evaluations/new')}
           >
-            Thêm nhận xét
+            {t('evaluations.list.addNew')}
           </Button>
         </Group>
       </Group>
@@ -105,8 +116,8 @@ export function EvaluationListPage() {
       <Paper shadow="sm" p="md" radius="md">
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
           <Select
-            label="Lớp"
-            placeholder="Tất cả lớp"
+            label={t('evaluations.list.filter.class')}
+            placeholder={t('evaluations.list.filter.allClasses')}
             clearable
             searchable
             data={(classes || []).map((c) => ({ value: c.id, label: c.name }))}
@@ -117,8 +128,8 @@ export function EvaluationListPage() {
             }}
           />
           <Select
-            label="Tháng"
-            placeholder="Chọn tháng"
+            label={t('evaluations.list.filter.month')}
+            placeholder={t('evaluations.list.filter.selectMonth')}
             clearable
             data={MONTHS}
             value={month}
@@ -128,8 +139,8 @@ export function EvaluationListPage() {
             }}
           />
           <Select
-            label="Năm"
-            placeholder="Chọn năm"
+            label={t('evaluations.list.filter.year')}
+            placeholder={t('evaluations.list.filter.selectYear')}
             clearable
             data={years}
             value={year}
@@ -139,8 +150,8 @@ export function EvaluationListPage() {
             }}
           />
           <Select
-            label="Loại"
-            placeholder="Tất cả"
+            label={t('evaluations.list.filter.type')}
+            placeholder={t('evaluations.list.filter.all')}
             clearable
             data={Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))}
             value={evaluationType}
@@ -156,15 +167,15 @@ export function EvaluationListPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Ngày</Table.Th>
-              <Table.Th>Học sinh</Table.Th>
-              <Table.Th>Lớp</Table.Th>
-              <Table.Th>Loại</Table.Th>
-              <Table.Th>Tham gia</Table.Th>
-              <Table.Th>BTVN</Table.Th>
-              <Table.Th>Thái độ</Table.Th>
-              <Table.Th>Điểm Nói</Table.Th>
-              <Table.Th>Điểm Viết</Table.Th>
+              <Table.Th>{t('evaluations.list.table.date')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.student')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.class')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.type')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.participation')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.homework')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.behavior')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.speakingScore')}</Table.Th>
+              <Table.Th>{t('evaluations.list.table.writingScore')}</Table.Th>
               <Table.Th w={80} />
             </Table.Tr>
           </Table.Thead>
@@ -173,7 +184,7 @@ export function EvaluationListPage() {
               <Table.Tr>
                 <Table.Td colSpan={10}>
                   <Text c="dimmed" ta="center" py="lg">
-                    Đang tải...
+                    {t('evaluations.list.loading')}
                   </Text>
                 </Table.Td>
               </Table.Tr>
@@ -181,7 +192,7 @@ export function EvaluationListPage() {
               data?.data?.map((evaluation: Evaluation) => (
                 <Table.Tr key={evaluation.id}>
                   <Table.Td>
-                    {new Date(evaluation.evaluationDate).toLocaleDateString('vi-VN')}
+                    {formatDate(evaluation.evaluationDate)}
                   </Table.Td>
                   <Table.Td>
                     <Text fw={500}>{evaluation.student?.fullName || '—'}</Text>
@@ -192,7 +203,7 @@ export function EvaluationListPage() {
                       color={TYPE_COLORS[evaluation.evaluationType] || 'gray'}
                       variant="light"
                     >
-                      {TYPE_LABELS[evaluation.evaluationType] || evaluation.evaluationType}
+                      {TYPE_LABELS[evaluation.evaluationType as keyof typeof TYPE_LABELS] || evaluation.evaluationType}
                     </Badge>
                   </Table.Td>
                   <Table.Td>
@@ -221,7 +232,7 @@ export function EvaluationListPage() {
                       leftSection={<IconEye size={14} />}
                       onClick={() => navigate(`/evaluations/${evaluation.id}`)}
                     >
-                      Xem
+                      {t('evaluations.list.view')}
                     </Button>
                   </Table.Td>
                 </Table.Tr>
@@ -232,7 +243,7 @@ export function EvaluationListPage() {
 
         {!isLoading && data?.data?.length === 0 && (
           <Stack align="center" py="xl">
-            <Text c="dimmed">Chưa có nhận xét nào trong khoảng đã chọn</Text>
+            <Text c="dimmed">{t('evaluations.list.empty')}</Text>
           </Stack>
         )}
 

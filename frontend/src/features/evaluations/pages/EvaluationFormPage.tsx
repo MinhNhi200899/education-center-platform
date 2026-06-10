@@ -23,24 +23,29 @@ import { useForm } from '@mantine/form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconCheck, IconMessageShare, IconFileDescription } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import type { EvaluationType } from '@/types';
 
-const TYPE_OPTIONS: { value: EvaluationType; label: string }[] = [
-  { value: 'daily', label: 'Buổi học' },
-  { value: 'weekly', label: 'Tuần' },
-  { value: 'monthly', label: 'Tháng' },
-  { value: 'term', label: 'Học kỳ' },
-];
-
 export function EvaluationFormPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEdit = !!id;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+
+  const TYPE_OPTIONS = useMemo(
+    () => [
+      { value: 'daily' as EvaluationType, label: t('evaluations.types.daily') },
+      { value: 'weekly' as EvaluationType, label: t('evaluations.types.weekly') },
+      { value: 'monthly' as EvaluationType, label: t('evaluations.types.monthly') },
+      { value: 'term' as EvaluationType, label: t('evaluations.types.term') },
+    ],
+    [t]
+  );
 
   const { data: classes } = useQuery({
     queryKey: ['classes-eval-form'],
@@ -73,10 +78,10 @@ export function EvaluationFormPage() {
       comments: '',
     },
     validate: {
-      studentId: (v) => (!v ? 'Chọn học sinh' : null),
-      classId: (v) => (!v ? 'Chọn lớp' : null),
-      evaluationType: (v) => (!v ? 'Chọn loại nhận xét' : null),
-      evaluationDate: (v) => (!v ? 'Chọn ngày' : null),
+      studentId: (v) => (!v ? t('evaluations.form.validation.selectStudent') : null),
+      classId: (v) => (!v ? t('evaluations.form.validation.selectClass') : null),
+      evaluationType: (v) => (!v ? t('evaluations.form.validation.selectType') : null),
+      evaluationDate: (v) => (!v ? t('evaluations.form.validation.selectDate') : null),
     },
   });
 
@@ -123,16 +128,16 @@ export function EvaluationFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
       notifications.show({
-        title: 'Thành công',
-        message: isEdit ? 'Đã cập nhật nhận xét' : 'Đã tạo nhận xét',
+        title: t('common.success'),
+        message: isEdit ? t('evaluations.messages.updateSuccess') : t('evaluations.messages.createSuccess'),
         color: 'green',
       });
       navigate('/evaluations');
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       notifications.show({
-        title: 'Lỗi',
-        message: error.response?.data?.error?.message || 'Không thể lưu nhận xét',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('evaluations.messages.saveFailed'),
         color: 'red',
       });
     },
@@ -150,7 +155,7 @@ export function EvaluationFormPage() {
       setPreviewOpen(true);
     },
     onError: () => {
-      notifications.show({ title: 'Lỗi', message: 'Không tải được báo cáo', color: 'red' });
+      notifications.show({ title: t('common.error'), message: t('evaluations.messages.previewFailed'), color: 'red' });
     },
   });
 
@@ -162,13 +167,13 @@ export function EvaluationFormPage() {
     },
     onSuccess: (data: { note?: string; messageTemplate?: string }) => {
       notifications.show({
-        title: 'Gửi Zalo (stub)',
-        message: data.note || data.messageTemplate || 'Đã ghi nhận gửi Zalo',
+        title: t('evaluations.messages.zaloSuccess'),
+        message: data.note || data.messageTemplate || t('evaluations.messages.zaloSuccess'),
         color: 'teal',
       });
     },
     onError: () => {
-      notifications.show({ title: 'Lỗi', message: 'Không gửi được Zalo', color: 'red' });
+      notifications.show({ title: t('common.error'), message: t('evaluations.messages.zaloFailed'), color: 'red' });
     },
   });
 
@@ -184,15 +189,15 @@ export function EvaluationFormPage() {
     <>
       <Breadcrumbs mb="md">
         <Anchor component={Link} to="/evaluations">
-          Nhận xét học sinh
+          {t('evaluations.list.title')}
         </Anchor>
-        <Text>{isEdit ? 'Chi tiết / Sửa' : 'Thêm mới'}</Text>
+        <Text>{isEdit ? t('evaluations.form.breadcrumbEdit') : t('evaluations.form.breadcrumbNew')}</Text>
       </Breadcrumbs>
 
       <form onSubmit={form.onSubmit((v) => saveMutation.mutate(v))}>
         <Stack gap="lg">
           <Group justify="space-between">
-            <Title order={2}>{isEdit ? 'Chi tiết nhận xét' : 'Thêm nhận xét'}</Title>
+            <Title order={2}>{isEdit ? t('evaluations.form.editTitle') : t('evaluations.form.newTitle')}</Title>
             {isEdit && (
               <Group>
                 <Button
@@ -201,7 +206,7 @@ export function EvaluationFormPage() {
                   loading={previewMutation.isPending}
                   onClick={() => previewMutation.mutate()}
                 >
-                  Xem báo cáo PH
+                  {t('evaluations.form.preview')}
                 </Button>
                 <Button
                   variant="light"
@@ -210,7 +215,7 @@ export function EvaluationFormPage() {
                   loading={zaloMutation.isPending}
                   onClick={() => zaloMutation.mutate()}
                 >
-                  Gửi Zalo PH
+                  {t('evaluations.form.zalo')}
                 </Button>
               </Group>
             )}
@@ -218,13 +223,13 @@ export function EvaluationFormPage() {
 
           <Paper shadow="sm" p="lg" radius="md" withBorder>
             <Text fw={600} mb="md" c="violet.7">
-              Thông tin chung
+              {t('evaluations.form.generalInfo')}
             </Text>
             <Grid>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <Select
-                  label="Lớp học"
-                  placeholder="Chọn lớp"
+                  label={t('evaluations.form.class')}
+                  placeholder={t('evaluations.form.selectClass')}
                   required
                   searchable
                   data={(classes || []).map((c) => ({ value: c.id, label: c.name }))}
@@ -237,8 +242,8 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <Select
-                  label="Học sinh"
-                  placeholder={classId ? 'Chọn học sinh' : 'Chọn lớp trước'}
+                  label={t('evaluations.form.student')}
+                  placeholder={classId ? t('evaluations.form.selectStudent') : t('evaluations.form.selectClassFirst')}
                   required
                   searchable
                   disabled={!classId}
@@ -248,7 +253,7 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <Select
-                  label="Loại nhận xét"
+                  label={t('evaluations.form.type')}
                   required
                   data={TYPE_OPTIONS}
                   {...form.getInputProps('evaluationType')}
@@ -256,7 +261,7 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
-                  label="Ngày nhận xét"
+                  label={t('evaluations.form.date')}
                   type="date"
                   required
                   {...form.getInputProps('evaluationDate')}
@@ -267,12 +272,12 @@ export function EvaluationFormPage() {
 
           <Paper shadow="sm" p="lg" radius="md" withBorder>
             <Text fw={600} mb="md" c="violet.7">
-              Thái độ & kỹ năng (thang 1–5)
+              {t('evaluations.form.attitudeTitle')}
             </Text>
             <Grid>
               <Grid.Col span={{ base: 12, md: 4 }}>
                 <Text size="sm" fw={500} mb="xs">
-                  Tham gia lớp: {form.values.participation}
+                  {t('evaluations.form.participation', { value: form.values.participation })}
                 </Text>
                 <Slider
                   value={form.values.participation}
@@ -288,7 +293,7 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, md: 4 }}>
                 <Text size="sm" fw={500} mb="xs">
-                  Bài tập về nhà: {form.values.homework}
+                  {t('evaluations.form.homework', { value: form.values.homework })}
                 </Text>
                 <Slider
                   value={form.values.homework}
@@ -304,7 +309,7 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, md: 4 }}>
                 <Text size="sm" fw={500} mb="xs">
-                  Thái độ / Hành vi: {form.values.behavior}
+                  {t('evaluations.form.behavior', { value: form.values.behavior })}
                 </Text>
                 <Slider
                   value={form.values.behavior}
@@ -320,12 +325,12 @@ export function EvaluationFormPage() {
               </Grid.Col>
             </Grid>
 
-            <Divider my="lg" label="Điểm Nói & Viết (0–10)" labelPosition="center" />
+            <Divider my="lg" label={t('evaluations.form.scoresTitle')} labelPosition="center" />
 
             <Grid>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <NumberInput
-                  label="Điểm Nói"
+                  label={t('evaluations.form.speakingScore')}
                   min={0}
                   max={10}
                   step={0.5}
@@ -335,7 +340,7 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <NumberInput
-                  label="Điểm Viết"
+                  label={t('evaluations.form.writingScore')}
                   min={0}
                   max={10}
                   step={0.5}
@@ -345,8 +350,8 @@ export function EvaluationFormPage() {
               </Grid.Col>
               <Grid.Col span={12}>
                 <Textarea
-                  label="Nhận xét của giáo viên"
-                  placeholder="Ghi nhận tiến bộ, điểm cần cải thiện..."
+                  label={t('evaluations.form.comments')}
+                  placeholder={t('evaluations.form.commentsPlaceholder')}
                   minRows={4}
                   {...form.getInputProps('comments')}
                 />
@@ -360,14 +365,14 @@ export function EvaluationFormPage() {
               leftSection={<IconArrowLeft size={16} />}
               onClick={() => navigate('/evaluations')}
             >
-              Quay lại
+              {t('common.back')}
             </Button>
             <Button
               type="submit"
               leftSection={<IconCheck size={16} />}
               loading={saveMutation.isPending}
             >
-              {isEdit ? 'Cập nhật' : 'Lưu nhận xét'}
+              {isEdit ? t('evaluations.form.submitUpdate') : t('evaluations.form.submitCreate')}
             </Button>
           </Group>
         </Stack>
@@ -376,7 +381,7 @@ export function EvaluationFormPage() {
       <Modal
         opened={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title="Báo cáo gửi phụ huynh"
+        title={t('evaluations.form.previewTitle')}
         size="xl"
       >
         <div dangerouslySetInnerHTML={{ __html: previewHtml }} />

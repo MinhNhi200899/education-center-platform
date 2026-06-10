@@ -5,11 +5,13 @@ import { useForm } from '@mantine/form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconCheck } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 import type { Student } from '@/types';
 
 export function StudentFormPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -29,10 +31,10 @@ export function StudentFormPage() {
       centerId: '',
     },
     validate: {
-      fullName: (value) => (!value ? 'Name is required' : null),
-      dateOfBirth: (value) => (!value ? 'Date of birth is required' : null),
-      gender: (value) => (!value ? 'Gender is required' : null),
-      enrollmentDate: (value) => (!value ? 'Enrollment date is required' : null),
+      fullName: (value) => (!value ? t('students.messages.requiredName') : null),
+      dateOfBirth: (value) => (!value ? t('students.messages.requiredDob') : null),
+      gender: (value) => (!value ? t('students.messages.requiredGender') : null),
+      enrollmentDate: (value) => (!value ? t('students.messages.requiredEnrollmentDate') : null),
     },
   });
 
@@ -75,16 +77,16 @@ export function StudentFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       notifications.show({
-        title: 'Success',
-        message: 'Student created successfully',
+        title: t('common.success'),
+        message: t('students.messages.createSuccess'),
         color: 'green',
       });
       navigate('/students');
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Error',
-        message: error.response?.data?.error?.message || 'Failed to create student',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('students.messages.createFailed'),
         color: 'red',
       });
     },
@@ -99,16 +101,16 @@ export function StudentFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       notifications.show({
-        title: 'Success',
-        message: 'Student updated successfully',
+        title: t('common.success'),
+        message: t('students.messages.updateSuccess'),
         color: 'green',
       });
       navigate('/students');
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Error',
-        message: error.response?.data?.error?.message || 'Failed to update student',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('students.messages.updateFailed'),
         color: 'red',
       });
     },
@@ -116,7 +118,7 @@ export function StudentFormPage() {
 
   const handleSubmit = (values: typeof form.values) => {
     if (!user?.centerId && !values.centerId) {
-      notifications.show({ title: 'Error', message: 'No center assigned to your account', color: 'red' });
+      notifications.show({ title: t('common.error'), message: t('students.messages.noCenter'), color: 'red' });
       return;
     }
     if (isEdit) {
@@ -126,32 +128,32 @@ export function StudentFormPage() {
     }
   };
 
-  if (isLoading) return <Stack gap="md"><Title>Loading...</Title></Stack>;
+  if (isLoading) return <Stack gap="md"><Title>{t('common.loading')}</Title></Stack>;
 
   return (
     <>
       <Breadcrumbs mb="md">
-        <Anchor component={Link} to="/students">Students</Anchor>
-        <Text>{isEdit ? 'Edit Student' : 'New Student'}</Text>
+        <Anchor component={Link} to="/students">{t('students.list.title')}</Anchor>
+        <Text>{isEdit ? t('students.form.editTitle') : t('students.form.newTitle')}</Text>
       </Breadcrumbs>
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="lg">
-          <Title order={2}>{isEdit ? 'Edit Student' : 'New Student'}</Title>
+          <Title order={2}>{isEdit ? t('students.form.editTitle') : t('students.form.newTitle')}</Title>
 
           <Paper shadow="sm" p="lg" radius="md">
             <Grid>
               <Grid.Col span={12}>
                 <TextInput
-                  label="Full Name"
-                  placeholder="Enter student name"
+                  label={t('students.form.fullName')}
+                  placeholder={t('students.form.fullNamePlaceholder')}
                   required
                   {...form.getInputProps('fullName')}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
-                  label="Date of Birth"
+                  label={t('students.form.dob')}
                   type="date"
                   required
                   {...form.getInputProps('dateOfBirth')}
@@ -159,41 +161,41 @@ export function StudentFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <Select
-                  label="Gender"
-                  placeholder="Select gender"
+                  label={t('students.form.gender')}
+                  placeholder={t('students.form.selectGender')}
                   required
                   data={[
-                    { value: 'male', label: 'Male' },
-                    { value: 'female', label: 'Female' },
-                    { value: 'other', label: 'Other' },
+                    { value: 'male', label: t('students.form.male') },
+                    { value: 'female', label: t('students.form.female') },
+                    { value: 'other', label: t('students.form.other') },
                   ]}
                   {...form.getInputProps('gender')}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
-                  label="Phone"
-                  placeholder="Enter phone number"
+                  label={t('students.form.phone')}
+                  placeholder={t('students.form.phonePlaceholder')}
                   {...form.getInputProps('phone')}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
-                  label="Email"
-                  placeholder="Enter email"
+                  label={t('students.form.email')}
+                  placeholder={t('students.form.emailPlaceholder')}
                   {...form.getInputProps('email')}
                 />
               </Grid.Col>
               <Grid.Col span={12}>
                 <TextInput
-                  label="Address"
-                  placeholder="Enter address"
+                  label={t('students.form.address')}
+                  placeholder={t('students.form.addressPlaceholder')}
                   {...form.getInputProps('address')}
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
-                  label="Enrollment Date"
+                  label={t('students.form.enrollmentDate')}
                   type="date"
                   required
                   disabled={isEdit}
@@ -202,8 +204,8 @@ export function StudentFormPage() {
               </Grid.Col>
               <Grid.Col span={12}>
                 <Textarea
-                  label="Notes"
-                  placeholder="Additional notes..."
+                  label={t('students.form.notes')}
+                  placeholder={t('students.form.notesPlaceholder')}
                   rows={3}
                   {...form.getInputProps('notes')}
                 />
@@ -213,10 +215,10 @@ export function StudentFormPage() {
 
           <Group justify="flex-end">
             <Button variant="light" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate('/students')}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" leftSection={<IconCheck size={16} />} loading={createMutation.isPending || updateMutation.isPending}>
-              {isEdit ? 'Update' : 'Create'} Student
+              {isEdit ? t('students.form.submitUpdate') : t('students.form.submitCreate')}
             </Button>
           </Group>
         </Stack>

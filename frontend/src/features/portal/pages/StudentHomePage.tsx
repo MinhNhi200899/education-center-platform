@@ -3,9 +3,11 @@ import { IconCalendar, IconSchool, IconReceipt, IconBell } from '@tabler/icons-r
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 
 export function StudentHomePage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['portal-dashboard'],
     queryFn: async () => {
@@ -15,7 +17,7 @@ export function StudentHomePage() {
   });
 
   if (isLoading) {
-    return <Text c="dimmed">Đang tải...</Text>;
+    return <Text c="dimmed">{t('portal.student.home.loading')}</Text>;
   }
 
   const pendingCount = data?.pendingInvoices?.length ?? 0;
@@ -23,17 +25,17 @@ export function StudentHomePage() {
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>Xin chào, {data?.profile?.fullName ?? 'học sinh'}</Title>
+        <Title order={2}>{t('portal.student.home.welcome', { name: data?.profile?.fullName ?? t('portal.student.home.fallbackName') })}</Title>
         <Text c="dimmed" size="sm">
-          {data?.profile?.center?.name ?? 'Education Center'}
+          {data?.profile?.center?.name ?? t('header.appName')}
         </Text>
       </div>
 
       {pendingCount > 0 && (
-        <Alert icon={<IconBell size={18} />} color="orange" title="Nhắc đóng học phí">
-          Bạn có {pendingCount} phiếu thu chưa thanh toán.{' '}
+        <Alert icon={<IconBell size={18} />} color="orange" title={t('portal.student.home.tuitionAlertTitle')}>
+          {t('portal.student.home.tuitionAlertMessage', { count: pendingCount })}{' '}
           <Button component={Link} to="/portal/tuition" variant="white" size="xs" ml="xs">
-            Xem ngay
+            {t('portal.student.home.tuitionAlertCta')}
           </Button>
         </Alert>
       )}
@@ -42,7 +44,7 @@ export function StudentHomePage() {
         <Paper withBorder p="md" radius="md">
           <Group justify="space-between">
             <Text size="sm" c="dimmed">
-              Lớp đang học
+              {t('portal.student.home.currentClasses')}
             </Text>
             <IconSchool size={20} />
           </Group>
@@ -53,7 +55,7 @@ export function StudentHomePage() {
         <Paper withBorder p="md" radius="md">
           <Group justify="space-between">
             <Text size="sm" c="dimmed">
-              Buổi học sắp tới
+              {t('portal.student.home.upcomingSessions')}
             </Text>
             <IconCalendar size={20} />
           </Group>
@@ -64,7 +66,7 @@ export function StudentHomePage() {
         <Paper withBorder p="md" radius="md">
           <Group justify="space-between">
             <Text size="sm" c="dimmed">
-              Phiếu thu chưa đóng
+              {t('portal.student.home.pendingInvoices')}
             </Text>
             <IconReceipt size={20} />
           </Group>
@@ -76,14 +78,14 @@ export function StudentHomePage() {
 
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" mb="md">
-          <Title order={4}>Lịch học sắp tới</Title>
+          <Title order={4}>{t('portal.student.home.upcomingSchedule')}</Title>
           <Button component={Link} to="/portal/schedule" variant="light" size="xs">
-            Xem lịch đầy đủ
+            {t('portal.student.home.viewFullSchedule')}
           </Button>
         </Group>
         {(data?.upcomingSessions?.length ?? 0) === 0 ? (
           <Text c="dimmed" size="sm">
-            Chưa có buổi học nào trong lịch.
+            {t('portal.student.home.noUpcoming')}
           </Text>
         ) : (
           <Stack gap="xs">
@@ -103,7 +105,7 @@ export function StudentHomePage() {
                     {s.classroom ? ` · ${s.classroom}` : ''}
                   </Text>
                 </div>
-                <Badge variant="light">Sắp diễn ra</Badge>
+                <Badge variant="light">{t('portal.student.home.badgeUpcoming')}</Badge>
               </Group>
             ))}
           </Stack>
@@ -112,11 +114,11 @@ export function StudentHomePage() {
 
       <Paper withBorder p="md" radius="md">
         <Title order={4} mb="md">
-          Lớp của tôi
+          {t('portal.student.home.myClasses')}
         </Title>
         {(data?.classes?.length ?? 0) === 0 ? (
           <Text c="dimmed" size="sm">
-            Chưa được xếp lớp.
+            {t('portal.student.home.noClassAssigned')}
           </Text>
         ) : (
           <Stack gap="xs">

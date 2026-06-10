@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Stack,
@@ -30,7 +30,9 @@ import {
   IconDownload,
   IconUpload,
 } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import {
   downloadCsv,
@@ -41,6 +43,8 @@ import {
 import type { Student, PaginatedResult } from '@/types';
 
 export function StudentListPage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocaleFormatters();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -50,6 +54,15 @@ export function StudentListPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importErrors, setImportErrors] = useState<Array<{ row: number; message: string }>>([]);
+
+  const STATUS_COLORS = useMemo(
+    () => ({
+      active: 'green',
+      inactive: 'yellow',
+      archived: 'gray',
+    }),
+    []
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['students', page, search, status, user?.centerId],
@@ -89,8 +102,11 @@ export function StudentListPage() {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setImportErrors(result.errors ?? []);
       notifications.show({
-        title: 'Import complete',
-        message: `${result.imported} imported, ${result.failed} failed`,
+        title: t('students.list.import.successTitle'),
+        message: t('students.list.import.successMessage', {
+          imported: result.imported,
+          failed: result.failed,
+        }),
         color: result.failed > 0 ? 'yellow' : 'green',
       });
       if (result.failed === 0) {
@@ -99,8 +115,8 @@ export function StudentListPage() {
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Import failed',
-        message: error.response?.data?.error?.message || 'Could not import students',
+        title: t('students.list.import.failedTitle'),
+        message: error.response?.data?.error?.message || t('common.error'),
         color: 'red',
       });
     },
@@ -122,8 +138,8 @@ export function StudentListPage() {
       );
     } catch (error: any) {
       notifications.show({
-        title: 'Export failed',
-        message: error.response?.data?.error?.message || 'Could not export students',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('students.list.exportFailed'),
         color: 'red',
       });
     }
@@ -140,26 +156,25 @@ export function StudentListPage() {
     const text = await file.text();
     const rows = parseCsvToRows(text);
     if (rows.length === 0) {
-      notifications.show({ title: 'Error', message: 'No data rows found in file', color: 'red' });
+      notifications.show({ title: t('common.error'), message: t('students.list.import.emptyFile'), color: 'red' });
       return;
     }
     importMutation.mutate(rows);
     resetRef.current?.();
   };
 
-  const getStatusColor = (s: string) => {
-    switch (s) {
-      case 'active': return 'green';
-      case 'inactive': return 'yellow';
-      case 'archived': return 'gray';
-      default: return 'gray';
-    }
-  };
+  const getStatusColor = (s: string) => STATUS_COLORS[s as keyof typeof STATUS_COLORS] || 'gray';
+
+  const statusOptions = [
+    { value: 'active', label: t('students.status.active') },
+    { value: 'inactive', label: t('students.status.inactive') },
+    { value: 'archived', label: t('students.status.archived') },
+  ];
 
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>Students</Title>
+        <Title order={2}>{t('students.list.title')}</Title>
         <Group gap="sm">
           <Button
             variant="light"
@@ -169,20 +184,20 @@ export function StudentListPage() {
               setImportModalOpen(true);
             }}
           >
-            Import
+            {t('common.import')}
           </Button>
           <Button
             leftSection={<IconDownload size={16} />}
             variant="light"
             onClick={handleExport}
           >
-            Export
+            {t('common.export')}
           </Button>
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => navigate('/students/new')}
           >
-            Add Student
+            {t('students.list.addNew')}
           </Button>
         </Group>
       </Group>
@@ -190,19 +205,15 @@ export function StudentListPage() {
       <Paper shadow="sm" p="md" radius="md">
         <Group gap="md">
           <TextInput
-            placeholder="Search by name, email, phone..."
+            placeholder={t('students.list.searchPlaceholder')}
             leftSection={<IconSearch size={16} />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1 }}
           />
           <Select
-            placeholder="Filter by status"
-            data={[
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-              { value: 'archived', label: 'Archived' },
-            ]}
+            placeholder={t('students.list.filterByStatus')}
+            data={statusOptions}
             value={status}
             onChange={setStatus}
             clearable
@@ -215,12 +226,12 @@ export function StudentListPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Date of Birth</Table.Th>
-              <Table.Th>Gender</Table.Th>
-              <Table.Th>Phone</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Enrollment Date</Table.Th>
+              <Table.Th>{t('students.list.table.name')}</Table.Th>
+              <Table.Th>{t('students.list.table.dob')}</Table.Th>
+              <Table.Th>{t('students.list.table.gender')}</Table.Th>
+              <Table.Th>{t('students.list.table.phone')}</Table.Th>
+              <Table.Th>{t('students.list.table.status')}</Table.Th>
+              <Table.Th>{t('students.list.table.enrollmentDate')}</Table.Th>
               <Table.Th w={60}></Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -230,15 +241,15 @@ export function StudentListPage() {
                 <Table.Td>
                   <Text fw={500}>{student.fullName}</Text>
                 </Table.Td>
-                <Table.Td>{new Date(student.dateOfBirth).toLocaleDateString()}</Table.Td>
+                <Table.Td>{formatDate(student.dateOfBirth)}</Table.Td>
                 <Table.Td>{student.gender}</Table.Td>
                 <Table.Td>{student.phone || '-'}</Table.Td>
                 <Table.Td>
                   <Badge color={getStatusColor(student.status)} variant="light">
-                    {student.status}
+                    {t(`students.status.${student.status}` as any)}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{new Date(student.enrollmentDate).toLocaleDateString()}</Table.Td>
+                <Table.Td>{formatDate(student.enrollmentDate)}</Table.Td>
                 <Table.Td>
                   <Menu shadow="md" position="bottom-end">
                     <Menu.Target>
@@ -251,13 +262,13 @@ export function StudentListPage() {
                         leftSection={<IconEye size={14} />}
                         onClick={() => navigate(`/students/${student.id}`)}
                       >
-                        View Details
+                        {t('common.viewDetails')}
                       </Menu.Item>
                       <Menu.Item
                         leftSection={<IconPencil size={14} />}
                         onClick={() => navigate(`/students/${student.id}/edit`)}
                       >
-                        Edit
+                        {t('common.edit')}
                       </Menu.Item>
                       <Menu.Divider />
                       <Menu.Item
@@ -265,7 +276,7 @@ export function StudentListPage() {
                         color="red"
                         onClick={() => archiveMutation.mutate(student.id)}
                       >
-                        Archive
+                        {t('common.archive')}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
@@ -277,9 +288,9 @@ export function StudentListPage() {
 
         {data?.data.length === 0 && !isLoading && (
           <Stack align="center" py="xl">
-            <Text c="dimmed">No students found</Text>
+            <Text c="dimmed">{t('students.list.noStudents')}</Text>
             <Button variant="light" onClick={() => navigate('/students/new')}>
-              Add your first student
+              {t('students.list.addFirst')}
             </Button>
           </Stack>
         )}
@@ -298,31 +309,31 @@ export function StudentListPage() {
       <Modal
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        title="Import Students"
+        title={t('students.list.import.title')}
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            Upload a CSV file with columns: fullName, dateOfBirth, gender, enrollmentDate (required), plus optional phone, email, address.
+            {t('students.list.import.description')}
           </Text>
           <Button variant="light" leftSection={<IconDownload size={16} />} onClick={handleDownloadTemplate}>
-            Download Template
+            {t('students.list.import.downloadTemplate')}
           </Button>
           <FileButton resetRef={resetRef} accept=".csv,text/csv" onChange={handleFileUpload}>
             {(props) => (
               <Button {...props} loading={importMutation.isPending}>
-                Upload CSV
+                {t('students.list.import.uploadCsv')}
               </Button>
             )}
           </FileButton>
           {importErrors.length > 0 && (
             <Paper withBorder p="sm">
               <Text size="sm" fw={500} mb="xs">
-                Import errors
+                {t('students.list.import.errorsTitle')}
               </Text>
               <List size="sm">
                 {importErrors.slice(0, 10).map((err) => (
                   <List.Item key={`${err.row}-${err.message}`}>
-                    Row {err.row}: {err.message}
+                    {t('students.list.import.rowError', { row: err.row, message: err.message })}
                   </List.Item>
                 ))}
               </List>

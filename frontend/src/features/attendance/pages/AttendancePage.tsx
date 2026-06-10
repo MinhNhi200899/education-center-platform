@@ -12,11 +12,13 @@ import {
   Textarea,
   ActionIcon,
 } from '@mantine/core';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconCheck, IconX } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import {
   queueAttendanceRecord,
@@ -33,6 +35,8 @@ interface StudentRow {
 }
 
 export function AttendancePage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocaleFormatters();
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const classId = searchParams.get('classId');
@@ -106,15 +110,15 @@ export function AttendancePage() {
     onSuccess: async (data) => {
       if (data?.offline) {
         notifications.show({
-          title: 'Đã lưu offline',
-          message: `${getPendingCount()} bản ghi chờ đồng bộ khi có mạng`,
+          title: t('attendance.mark.savedOfflineTitle'),
+          message: t('attendance.mark.savedOfflineMessage', { count: getPendingCount() }),
           color: 'orange',
         });
       } else {
         await syncOfflineQueue();
         notifications.show({
-          title: 'Thành công',
-          message: 'Đã lưu điểm danh',
+          title: t('attendance.mark.savedTitle'),
+          message: t('attendance.mark.savedMessage'),
           color: 'green',
         });
       }
@@ -122,7 +126,7 @@ export function AttendancePage() {
       navigate(classId ? '/attendance' : '/attendance');
     },
     onError: () => {
-      notifications.show({ title: 'Lỗi', message: 'Không lưu được điểm danh', color: 'red' });
+      notifications.show({ title: t('attendance.mark.failedTitle'), message: t('attendance.mark.failedMessage'), color: 'red' });
     },
   });
 
@@ -170,8 +174,12 @@ export function AttendancePage() {
     markMutation.mutate({ sessionId, records: recordList });
   };
 
-  const statusLabel = (s: AttendanceStatus) =>
-    ({ present: 'CÓ', absent: 'VẮNG', late: 'MUỘN', excused: 'CP' }[s] || s);
+  const statusColor = useMemo(
+    () => ({ present: 'green', absent: 'red', late: 'yellow', excused: 'blue' }),
+    []
+  );
+
+  const statusLabel = (s: AttendanceStatus) => t(`attendance.status.${s}` as any);
 
   return (
     <Stack gap="lg">
@@ -180,12 +188,10 @@ export function AttendancePage() {
           <IconArrowLeft size={20} />
         </ActionIcon>
         <div style={{ flex: 1 }}>
-          <Title order={2}>Điểm danh nhanh</Title>
+          <Title order={2}>{t('attendance.mark.title')}</Title>
           <Text c="dimmed">
             {session?.class?.name} —{' '}
-            {session?.sessionDate
-              ? new Date(session.sessionDate).toLocaleDateString('vi-VN')
-              : ''}
+            {session?.sessionDate ? formatDate(session.sessionDate) : ''}
           </Text>
         </div>
       </Group>
@@ -197,7 +203,7 @@ export function AttendancePage() {
           leftSection={<IconCheck size={18} />}
           onClick={() => handleMarkAll('present')}
         >
-          Tất cả CÓ
+          {t('attendance.mark.markAllPresent')}
         </Button>
         <Button
           size="md"
@@ -206,12 +212,12 @@ export function AttendancePage() {
           leftSection={<IconX size={18} />}
           onClick={() => handleMarkAll('absent')}
         >
-          Tất cả VẮNG
+          {t('attendance.mark.markAllAbsent')}
         </Button>
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-        {isLoading && <Text>Đang tải...</Text>}
+        {isLoading && <Text>{t('attendance.mark.loading')}</Text>}
         {students?.map((student) => {
           const current = records[student.studentId];
           return (
@@ -228,7 +234,7 @@ export function AttendancePage() {
                     applyStatus(student.studentId, 'present', student.studentName)
                   }
                 >
-                  CÓ
+                  {t('attendance.mark.present')}
                 </Button>
                 <Button
                   size="lg"
@@ -238,11 +244,11 @@ export function AttendancePage() {
                     applyStatus(student.studentId, 'absent', student.studentName)
                   }
                 >
-                  VẮNG
+                  {t('attendance.mark.absent')}
                 </Button>
               </Group>
               {current && (
-                <Badge mt="sm" color={{ present: 'green', absent: 'red', late: 'yellow', excused: 'blue' }[current]}>
+                <Badge mt="sm" color={statusColor[current]}>
                   {statusLabel(current)}
                   {reasons[student.studentId] ? ` — ${reasons[student.studentId]}` : ''}
                 </Badge>
@@ -259,34 +265,37 @@ export function AttendancePage() {
           loading={markMutation.isPending}
           disabled={Object.keys(records).length === 0}
         >
-          Lưu điểm danh
+          {t('attendance.mark.save')}
         </Button>
       </Group>
 
       <Modal
         opened={!!reasonModal}
         onClose={() => setReasonModal(null)}
-        title={`Lý do ${reasonModal?.status === 'absent' ? 'vắng' : 'muộn'} — ${reasonModal?.studentName}`}
+        title={reasonModal ? t('attendance.mark.reasonTitle', {
+          status: t(reasonModal.status === 'absent' ? 'attendance.mark.reasonAbsent' : 'attendance.mark.reasonLate'),
+          name: reasonModal.studentName,
+        }) : ''}
       >
         <Stack>
           <Select
-            label="Lý do có sẵn"
-            placeholder="Chọn lý do"
+            label={t('attendance.mark.reasonPreset')}
+            placeholder={t('attendance.mark.reasonSelect')}
             data={[
               ...(absenceReasons?.map((r) => ({ value: r.id, label: r.name })) || []),
-              { value: 'other', label: 'Khác (nhập tay)' },
+              { value: 'other', label: t('attendance.mark.reasonOther') },
             ]}
             value={selectedReason}
             onChange={setSelectedReason}
           />
           {selectedReason === 'other' && (
             <Textarea
-              label="Mô tả"
+              label={t('attendance.mark.description')}
               value={customReason}
               onChange={(e) => setCustomReason(e.currentTarget.value)}
             />
           )}
-          <Button onClick={confirmReason}>Xác nhận</Button>
+          <Button onClick={confirmReason}>{t('common.confirm')}</Button>
         </Stack>
       </Modal>
     </Stack>

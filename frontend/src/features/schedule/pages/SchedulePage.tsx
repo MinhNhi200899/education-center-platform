@@ -20,6 +20,7 @@ import {
   IconCalendarPlus,
 } from '@tabler/icons-react';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Class } from '@/types';
@@ -43,6 +44,7 @@ function shiftWeek(weekStart: string, delta: number): string {
 }
 
 export function SchedulePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [view, setView] = useState<'weekly' | 'monthly'>('weekly');
@@ -107,8 +109,8 @@ export function SchedulePage() {
     },
     onSuccess: () => {
       notifications.show({
-        title: 'Đã sinh buổi học',
-        message: 'Buổi học trong tháng đã được tạo từ lịch lớp',
+        title: t('schedule.messages.generatedTitle'),
+        message: t('schedule.messages.generatedMessage'),
         color: 'green',
       });
       queryClient.invalidateQueries({ queryKey: ['schedule-weekly'] });
@@ -118,8 +120,8 @@ export function SchedulePage() {
     },
     onError: () => {
       notifications.show({
-        title: 'Lỗi',
-        message: 'Không thể sinh buổi học',
+        title: t('schedule.messages.failedTitle'),
+        message: t('schedule.messages.failedMessage'),
         color: 'red',
       });
     },
@@ -134,25 +136,25 @@ export function SchedulePage() {
     <Stack gap="lg">
       <Group justify="space-between" align="flex-start">
         <div>
-          <Title order={2}>Lịch dạy</Title>
+          <Title order={2}>{t('schedule.title')}</Title>
           <Text c="dimmed" size="sm">
-            Xem lịch theo tuần hoặc tháng, cập nhật ghi chú và tài liệu buổi học
+            {t('schedule.subtitle')}
           </Text>
         </div>
         <SegmentedControl
           value={view}
           onChange={(v) => setView(v as 'weekly' | 'monthly')}
           data={[
-            { label: 'Theo tuần', value: 'weekly' },
-            { label: 'Theo tháng', value: 'monthly' },
+            { label: t('schedule.viewWeekly'), value: 'weekly' },
+            { label: t('schedule.viewMonthly'), value: 'monthly' },
           ]}
         />
       </Group>
 
       <Group>
         <Select
-          label="Lớp học"
-          placeholder="Chọn lớp"
+          label={t('schedule.selectClass')}
+          placeholder={t('schedule.selectClassPlaceholder')}
           data={(classes ?? []).map((c) => ({ value: c.id, label: c.name }))}
           value={activeClassId}
           onChange={(v) => setClassId(v)}
@@ -167,7 +169,7 @@ export function SchedulePage() {
           loading={generateMutation.isPending}
           disabled={!activeClassId}
         >
-          Sinh buổi tháng
+          {t('schedule.generateMonth')}
         </Button>
       </Group>
 
@@ -179,7 +181,7 @@ export function SchedulePage() {
               onClick={() => setWeekStart((w) => shiftWeek(w, -1))}
               leftSection={<IconChevronLeft size={16} />}
             >
-              Tuần trước
+              {t('schedule.weekPrev')}
             </Button>
             <Text fw={500}>
               {weekly?.weekStart} → {weekly?.weekEnd}
@@ -189,10 +191,10 @@ export function SchedulePage() {
               onClick={() => setWeekStart((w) => shiftWeek(w, 1))}
               rightSection={<IconChevronRight size={16} />}
             >
-              Tuần sau
+              {t('schedule.weekNext')}
             </Button>
             <Button variant="default" size="xs" onClick={() => setWeekStart(getMonday(new Date()))}>
-              Tuần này
+              {t('schedule.thisWeek')}
             </Button>
           </Group>
 
@@ -243,11 +245,11 @@ export function SchedulePage() {
 
           <Stack gap="sm" maw={400}>
             <Text fw={600}>
-              {monthly?.className} — tháng {month}/{year}
+              {monthly?.className ? t('schedule.monthlyClassLabel', { name: monthly.className, month, year }) : ''}
             </Text>
             {!monthly?.sessions.length ? (
               <Text c="dimmed" size="sm">
-                Chưa có buổi học. Bấm &quot;Sinh buổi tháng&quot; để tạo từ lịch lớp.
+                {t('schedule.monthlyEmpty')}
               </Text>
             ) : (
               monthly.sessions.map((s) => (

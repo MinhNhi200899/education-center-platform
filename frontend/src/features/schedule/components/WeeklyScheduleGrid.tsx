@@ -1,8 +1,7 @@
 import { Paper, Text, Stack, Badge, UnstyledButton, SimpleGrid } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import type { ScheduleSession } from '../types';
 import { SessionStatusBadge } from './SessionStatusBadge';
-
-const DAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T12:00:00`);
@@ -17,22 +16,29 @@ interface Props {
 }
 
 export function WeeklyScheduleGrid({ weekStart, sessions, onSelectSession }: Props) {
-  const days = DAY_LABELS.map((label, i) => ({
-    label,
-    date: addDays(weekStart, i),
-  }));
+  const { t } = useTranslation();
+  const dayKeys: Array<{ i18n: string; date: Date }> = [
+    { i18n: 'common.monday', date: new Date(`${addDays(weekStart, 0)}T12:00:00`) },
+    { i18n: 'common.tuesday', date: new Date(`${addDays(weekStart, 1)}T12:00:00`) },
+    { i18n: 'common.wednesday', date: new Date(`${addDays(weekStart, 2)}T12:00:00`) },
+    { i18n: 'common.thursday', date: new Date(`${addDays(weekStart, 3)}T12:00:00`) },
+    { i18n: 'common.friday', date: new Date(`${addDays(weekStart, 4)}T12:00:00`) },
+    { i18n: 'common.saturday', date: new Date(`${addDays(weekStart, 5)}T12:00:00`) },
+    { i18n: 'common.sunday', date: new Date(`${addDays(weekStart, 6)}T12:00:00`) },
+  ];
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, md: 4, lg: 7 }} spacing="sm">
-      {days.map((day) => {
-        const daySessions = sessions.filter((s) => s.sessionDate === day.date);
+      {dayKeys.map((d, i) => {
+        const dayDate = d.date.toISOString().split('T')[0];
+        const daySessions = sessions.filter((s) => s.sessionDate === dayDate);
         return (
-          <Paper key={day.date} withBorder p="sm" radius="md" mih={140}>
-            <GroupHeader label={day.label} date={day.date} count={daySessions.length} />
+          <Paper key={i} withBorder p="sm" radius="md" mih={140}>
+            <GroupHeader label={t(d.i18n)} date={dayDate} count={daySessions.length} />
             <Stack gap={6} mt="xs">
               {daySessions.length === 0 ? (
                 <Text size="xs" c="dimmed">
-                  Không có buổi
+                  {t('schedule.weeklyGrid.noSession')}
                 </Text>
               ) : (
                 daySessions.map((s) => (
@@ -48,7 +54,7 @@ export function WeeklyScheduleGrid({ weekStart, sessions, onSelectSession }: Pro
                     }}
                   >
                     <Text size="xs" fw={600} lineClamp={1}>
-                      {s.class?.name ?? 'Lớp'}
+                      {s.class?.name ?? t('classes.list.title')}
                     </Text>
                     <Text size="xs" c="dimmed">
                       {s.startTime}–{s.endTime}
@@ -74,6 +80,7 @@ function GroupHeader({
   date: string;
   count: number;
 }) {
+  const { t } = useTranslation();
   return (
     <Stack gap={2}>
       <Text fw={700} size="sm">
@@ -84,7 +91,7 @@ function GroupHeader({
       </Text>
       {count > 0 && (
         <Badge size="xs" variant="outline">
-          {count} buổi
+          {t('schedule.weeklyGrid.sessions', { count })}
         </Badge>
       )}
     </Stack>

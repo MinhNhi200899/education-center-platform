@@ -2,10 +2,14 @@ import { Stack, Title, Paper, Grid, Text, Badge, Group, Button, Breadcrumbs, Anc
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import type { Teacher } from '@/types';
 
 export function TeacherDetailPage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocaleFormatters();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -18,13 +22,13 @@ export function TeacherDetailPage() {
     enabled: !!id,
   });
 
-  if (isLoading) return <Stack gap="md"><Title>Loading...</Title></Stack>;
-  if (!teacher) return <Stack gap="md"><Title>Teacher not found</Title></Stack>;
+  if (isLoading) return <Stack gap="md"><Title>{t('common.loading')}</Title></Stack>;
+  if (!teacher) return <Stack gap="md"><Title>{t('teachers.detail.notFound')}</Title></Stack>;
 
   return (
     <>
       <Breadcrumbs mb="md">
-        <Anchor component={Link} to="/teachers">Teachers</Anchor>
+        <Anchor component={Link} to="/teachers">{t('teachers.list.title')}</Anchor>
         <Text>{teacher.fullName}</Text>
       </Breadcrumbs>
 
@@ -33,10 +37,10 @@ export function TeacherDetailPage() {
           <Title order={2}>{teacher.fullName}</Title>
           <Group gap="sm">
             <Button variant="light" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate('/teachers')}>
-              Back
+              {t('common.back')}
             </Button>
             <Button leftSection={<IconEdit size={16} />} onClick={() => navigate(`/teachers/${id}/edit`)}>
-              Edit
+              {t('common.edit')}
             </Button>
           </Group>
         </Group>
@@ -45,45 +49,45 @@ export function TeacherDetailPage() {
           <Grid.Col span={{ base: 12, md: 8 }}>
             <Stack gap="md">
               <Paper shadow="sm" p="lg" radius="md">
-                <Title order={4} mb="md">Personal Information</Title>
+                <Title order={4} mb="md">{t('teachers.detail.personalInfo')}</Title>
                 <Grid>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Full Name</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.fullName')}</Text>
                     <Text fw={500}>{teacher.fullName}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Date of Birth</Text>
-                    <Text fw={500}>{new Date(teacher.dateOfBirth).toLocaleDateString()}</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.dob')}</Text>
+                    <Text fw={500}>{formatDate(teacher.dateOfBirth)}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Gender</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.gender')}</Text>
                     <Text fw={500}>{teacher.gender}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Status</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.status')}</Text>
                     <Badge color={teacher.status === 'active' ? 'green' : teacher.status === 'inactive' ? 'yellow' : 'red'}>
-                      {teacher.status}
+                      {t(`teachers.status.${teacher.status}` as any)}
                     </Badge>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Email</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.email')}</Text>
                     <Text fw={500}>{teacher.email}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Phone</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.phone')}</Text>
                     <Text fw={500}>{teacher.phone}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Qualification</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.qualification')}</Text>
                     <Text fw={500}>{teacher.qualification || '-'}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Specialization</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.specialization')}</Text>
                     <Text fw={500}>{teacher.specialization || '-'}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
-                    <Text size="sm" c="dimmed">Hire Date</Text>
-                    <Text fw={500}>{new Date(teacher.hireDate).toLocaleDateString()}</Text>
+                    <Text size="sm" c="dimmed">{t('teachers.detail.hireDate')}</Text>
+                    <Text fw={500}>{formatDate(teacher.hireDate)}</Text>
                   </Grid.Col>
                 </Grid>
               </Paper>
@@ -92,13 +96,13 @@ export function TeacherDetailPage() {
 
           <Grid.Col span={{ base: 12, md: 4 }}>
             <Paper shadow="sm" p="lg" radius="md">
-              <Title order={4} mb="md">Current Classes</Title>
+              <Title order={4} mb="md">{t('teachers.detail.currentClasses')}</Title>
               {teacher.currentClasses?.map((cls) => (
                 <Stack key={cls.id} gap="xs">
                   <Text fw={500}>{cls.name}</Text>
                   <Badge size="sm" variant="light">{cls.role}</Badge>
                 </Stack>
-              )) || <Text c="dimmed">No classes assigned</Text>}
+              )) || <Text c="dimmed">{t('teachers.detail.noClasses')}</Text>}
             </Paper>
           </Grid.Col>
         </Grid>

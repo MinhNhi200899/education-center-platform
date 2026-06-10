@@ -12,30 +12,48 @@ import {
   Button,
   ActionIcon,
 } from '@mantine/core';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { IconEye, IconSearch, IconPlus, IconBell } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
 import type { Invoice } from '@/types';
 import { InvoiceGenerateModal } from '../components/InvoiceGenerateModal';
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Nháp',
-  issued: 'Đã phát hành',
-  paid: 'Đã thanh toán',
-  overdue: 'Quá hạn',
-  cancelled: 'Đã hủy',
-};
-
 export function InvoiceListPage() {
+  const { t } = useTranslation();
+  const { formatDate, formatVnd } = useLocaleFormatters();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [generateOpen, setGenerateOpen] = useState(false);
+
+  const STATUS_COLORS = useMemo(
+    () => ({
+      draft: 'gray',
+      issued: 'blue',
+      paid: 'green',
+      overdue: 'red',
+      cancelled: 'gray',
+    }),
+    []
+  );
+
+  const STATUS_OPTIONS = useMemo(
+    () => [
+      { value: 'draft', label: t('payments.status.draft') },
+      { value: 'issued', label: t('payments.status.pending') },
+      { value: 'paid', label: t('payments.status.paid') },
+      { value: 'overdue', label: t('payments.status.overdue') },
+      { value: 'cancelled', label: t('payments.status.cancelled') },
+    ],
+    [t]
+  );
 
   const { data } = useQuery({
     queryKey: ['invoices', page, status, search],
@@ -58,34 +76,30 @@ export function InvoiceListPage() {
     },
     onSuccess: (data) => {
       notifications.show({
-        title: 'Gửi nhắc nợ',
-        message: `Đã gửi ${data.sent} thông báo (${data.skipped} bỏ qua)`,
+        title: t('payments.invoiceList.reminderSuccessTitle'),
+        message: t('payments.invoiceList.reminderSuccess', { sent: data.sent, skipped: data.skipped }),
         color: 'teal',
       });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Lỗi',
-        message: error.response?.data?.error?.message || 'Không thể gửi nhắc nợ',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('payments.invoiceList.reminderFailed'),
         color: 'red',
       });
     },
   });
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
-
-  const getStatusColor = (s: string) =>
-    ({ draft: 'gray', issued: 'blue', paid: 'green', overdue: 'red', cancelled: 'gray' }[s] || 'gray');
+  const getStatusColor = (s: string) => STATUS_COLORS[s as keyof typeof STATUS_COLORS] || 'gray';
 
   return (
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2}>Phiếu thu học phí</Title>
+          <Title order={2}>{t('payments.invoiceList.title')}</Title>
           <Text c="dimmed" size="sm">
-            Quản lý phiếu thu, tạo tự động từ điểm danh, nhắc nợ
+            {t('payments.invoiceList.subtitle')}
           </Text>
         </div>
         <Group>
@@ -95,10 +109,10 @@ export function InvoiceListPage() {
             loading={remindersMutation.isPending}
             onClick={() => remindersMutation.mutate()}
           >
-            Gửi nhắc nợ
+            {t('payments.invoiceList.sendReminder')}
           </Button>
           <Button leftSection={<IconPlus size={16} />} onClick={() => setGenerateOpen(true)}>
-            Tạo từ điểm danh
+            {t('payments.invoiceList.generateFromAttendance')}
           </Button>
         </Group>
       </Group>
@@ -106,7 +120,7 @@ export function InvoiceListPage() {
       <Paper shadow="sm" p="md" radius="md">
         <Group mb="md">
           <TextInput
-            placeholder="Tìm theo số phiếu..."
+            placeholder={t('payments.invoiceList.searchPlaceholder')}
             leftSection={<IconSearch size={16} />}
             style={{ flex: 1 }}
             value={search}
@@ -116,14 +130,8 @@ export function InvoiceListPage() {
             }}
           />
           <Select
-            placeholder="Lọc trạng thái"
-            data={[
-              { value: 'draft', label: 'Nháp' },
-              { value: 'issued', label: 'Đã phát hành' },
-              { value: 'paid', label: 'Đã thanh toán' },
-              { value: 'overdue', label: 'Quá hạn' },
-              { value: 'cancelled', label: 'Đã hủy' },
-            ]}
+            placeholder={t('payments.invoiceList.filterStatus')}
+            data={STATUS_OPTIONS}
             value={status}
             onChange={setStatus}
             clearable
@@ -134,12 +142,12 @@ export function InvoiceListPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Số phiếu</Table.Th>
-              <Table.Th>Học sinh</Table.Th>
-              <Table.Th>Số tiền</Table.Th>
-              <Table.Th>Trạng thái</Table.Th>
-              <Table.Th>Ngày phát hành</Table.Th>
-              <Table.Th>Hạn thanh toán</Table.Th>
+              <Table.Th>{t('payments.invoiceList.table.number')}</Table.Th>
+              <Table.Th>{t('payments.invoiceList.table.student')}</Table.Th>
+              <Table.Th>{t('payments.invoiceList.table.amount')}</Table.Th>
+              <Table.Th>{t('payments.invoiceList.table.status')}</Table.Th>
+              <Table.Th>{t('payments.invoiceList.table.issueDate')}</Table.Th>
+              <Table.Th>{t('payments.invoiceList.table.dueDate')}</Table.Th>
               <Table.Th w={80}></Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -150,14 +158,14 @@ export function InvoiceListPage() {
                   <Text fw={500}>{invoice.invoiceNumber}</Text>
                 </Table.Td>
                 <Table.Td>{invoice.student?.fullName || '-'}</Table.Td>
-                <Table.Td>{formatCurrency(invoice.totalAmount)}</Table.Td>
+                <Table.Td>{formatVnd(invoice.totalAmount)}</Table.Td>
                 <Table.Td>
                   <Badge color={getStatusColor(invoice.status)} variant="light">
-                    {STATUS_LABELS[invoice.status] || invoice.status}
+                    {t(`payments.status.${invoice.status}` as any)}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{new Date(invoice.issueDate).toLocaleDateString('vi-VN')}</Table.Td>
-                <Table.Td>{new Date(invoice.dueDate).toLocaleDateString('vi-VN')}</Table.Td>
+                <Table.Td>{formatDate(invoice.issueDate)}</Table.Td>
+                <Table.Td>{formatDate(invoice.dueDate)}</Table.Td>
                 <Table.Td>
                   <ActionIcon variant="subtle" onClick={() => navigate(`/payments/invoice/${invoice.id}`)}>
                     <IconEye size={16} />
@@ -170,7 +178,7 @@ export function InvoiceListPage() {
 
         {data?.data?.length === 0 && (
           <Stack align="center" py="xl">
-            <Text c="dimmed">Chưa có phiếu thu</Text>
+            <Text c="dimmed">{t('payments.invoiceList.empty')}</Text>
           </Stack>
         )}
 

@@ -3,6 +3,7 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 
 function getMonday(date: Date): string {
@@ -18,6 +19,7 @@ function shiftWeek(weekStart: string, delta: number): string {
 }
 
 export function StudentSchedulePage() {
+  const { t } = useTranslation();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
 
   const { data, isLoading } = useQuery({
@@ -32,9 +34,9 @@ export function StudentSchedulePage() {
 
   return (
     <Stack gap="lg">
-      <Title order={2}>Lịch học của tôi</Title>
+      <Title order={2}>{t('portal.student.schedule.title')}</Title>
       <Text c="dimmed" size="sm">
-        Các buổi học thuộc lớp bạn đang theo học
+        {t('portal.student.schedule.subtitle')}
       </Text>
 
       <Group>
@@ -43,7 +45,7 @@ export function StudentSchedulePage() {
           leftSection={<IconChevronLeft size={16} />}
           onClick={() => setWeekStart(shiftWeek(weekStart, -1))}
         >
-          Tuần trước
+          {t('portal.student.schedule.prev')}
         </Button>
         <Text fw={500}>{weekLabel}</Text>
         <Button
@@ -51,15 +53,15 @@ export function StudentSchedulePage() {
           rightSection={<IconChevronRight size={16} />}
           onClick={() => setWeekStart(shiftWeek(weekStart, 1))}
         >
-          Tuần sau
+          {t('portal.student.schedule.next')}
         </Button>
       </Group>
 
       <Paper withBorder p="md" radius="md">
         {isLoading ? (
-          <Text c="dimmed">Đang tải...</Text>
+          <Text c="dimmed">{t('portal.student.schedule.loading')}</Text>
         ) : (data?.sessions?.length ?? 0) === 0 ? (
-          <Text c="dimmed">Không có buổi học trong tuần này.</Text>
+          <Text c="dimmed">{t('portal.student.schedule.empty')}</Text>
         ) : (
           <Stack gap="sm">
             {data.sessions.map((s: {
@@ -79,7 +81,7 @@ export function StudentSchedulePage() {
                   </Text>
                   {s.classroom && (
                     <Text size="sm" c="dimmed">
-                      Phòng: {s.classroom}
+                      {t('portal.student.schedule.room', { room: s.classroom })}
                     </Text>
                   )}
                 </div>

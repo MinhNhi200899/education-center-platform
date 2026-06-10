@@ -1,21 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Stack, Title, Paper, TextInput, Button, Group, Text, Select, Loader } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconDeviceFloppy } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
-
-const BANK_OPTIONS = [
-  { value: 'VCB', label: 'Vietcombank (VCB)' },
-  { value: 'TCB', label: 'Techcombank (TCB)' },
-  { value: 'BIDV', label: 'BIDV' },
-  { value: 'VTB', label: 'Vietinbank (VTB)' },
-  { value: 'MB', label: 'MB Bank (MB)' },
-  { value: 'ACB', label: 'ACB' },
-  { value: 'VPB', label: 'VPBank (VPB)' },
-];
 
 interface PaymentSettings {
   centerId: string;
@@ -26,9 +17,23 @@ interface PaymentSettings {
 }
 
 export function PaymentSettingsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const centerId = user?.centerId;
+
+  const BANK_OPTIONS = useMemo(
+    () => [
+      { value: 'VCB', label: t('settings.payments.banks.VCB') },
+      { value: 'TCB', label: t('settings.payments.banks.TCB') },
+      { value: 'BIDV', label: t('settings.payments.banks.BIDV') },
+      { value: 'VTB', label: t('settings.payments.banks.VTB') },
+      { value: 'MB', label: t('settings.payments.banks.MB') },
+      { value: 'ACB', label: t('settings.payments.banks.ACB') },
+      { value: 'VPB', label: t('settings.payments.banks.VPB') },
+    ],
+    [t]
+  );
 
   const form = useForm({
     initialValues: {
@@ -37,9 +42,9 @@ export function PaymentSettingsPage() {
       accountName: '',
     },
     validate: {
-      vietqrBankId: (v) => (!v ? 'Select a bank' : null),
-      accountNo: (v) => (!v ? 'Account number is required' : null),
-      accountName: (v) => (!v ? 'Account holder name is required' : null),
+      vietqrBankId: (v) => (!v ? t('settings.payments.selectBank') : null),
+      accountNo: (v) => (!v ? t('settings.payments.accountNumberRequired') : null),
+      accountName: (v) => (!v ? t('settings.payments.accountHolderRequired') : null),
     },
   });
 
@@ -69,12 +74,12 @@ export function PaymentSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payment-settings', centerId] });
-      notifications.show({ title: 'Saved', message: 'Payment settings updated', color: 'green' });
+      notifications.show({ title: t('settings.payments.savedTitle'), message: t('settings.payments.savedMessage'), color: 'green' });
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Error',
-        message: error.response?.data?.error?.message || 'Failed to save settings',
+        title: t('settings.payments.failedTitle'),
+        message: error.response?.data?.error?.message || t('settings.payments.failedMessage'),
         color: 'red',
       });
     },
@@ -83,8 +88,8 @@ export function PaymentSettingsPage() {
   if (!centerId) {
     return (
       <Stack gap="md">
-        <Title order={2}>QR Payment Settings</Title>
-        <Text c="dimmed">No center assigned to your account.</Text>
+        <Title order={2}>{t('settings.payments.title')}</Title>
+        <Text c="dimmed">{t('settings.payments.noCenter')}</Text>
       </Stack>
     );
   }
@@ -92,9 +97,9 @@ export function PaymentSettingsPage() {
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>QR Payment Settings</Title>
+        <Title order={2}>{t('settings.payments.title')}</Title>
         <Text c="dimmed" size="sm">
-          Configure VietQR bank details for {data?.centerName || user?.center?.name}
+          {t('settings.payments.subtitle', { center: data?.centerName || user?.center?.name || '' })}
         </Text>
       </div>
 
@@ -105,22 +110,22 @@ export function PaymentSettingsPage() {
           <form onSubmit={form.onSubmit((values) => saveMutation.mutate(values))}>
             <Stack gap="md">
               <Select
-                label="Bank"
-                placeholder="Select bank"
+                label={t('settings.payments.bank')}
+                placeholder={t('settings.payments.selectBank')}
                 data={BANK_OPTIONS}
                 searchable
                 required
                 {...form.getInputProps('vietqrBankId')}
               />
               <TextInput
-                label="Account number"
-                placeholder="Bank account number"
+                label={t('settings.payments.accountNumber')}
+                placeholder={t('settings.payments.accountNumberPlaceholder')}
                 required
                 {...form.getInputProps('accountNo')}
               />
               <TextInput
-                label="Account holder name"
-                placeholder="Name shown on VietQR"
+                label={t('settings.payments.accountHolder')}
+                placeholder={t('settings.payments.accountHolderPlaceholder')}
                 required
                 {...form.getInputProps('accountName')}
               />
@@ -130,7 +135,7 @@ export function PaymentSettingsPage() {
                   leftSection={<IconDeviceFloppy size={16} />}
                   loading={saveMutation.isPending}
                 >
-                  Save settings
+                  {t('settings.payments.save')}
                 </Button>
               </Group>
             </Stack>

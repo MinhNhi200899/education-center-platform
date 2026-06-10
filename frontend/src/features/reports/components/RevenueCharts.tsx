@@ -14,16 +14,11 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
+import { useLocaleFormatters } from '@/lib/format';
 import type { RevenueReportData } from '../types';
 
 const PIE_COLORS = ['#12b886', '#228be6', '#7950f2', '#fab005', '#fa5252', '#15aabf'];
-
-const formatVnd = (value: number) =>
-  new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(value);
 
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number' && !Number.isNaN(value)) return value;
@@ -32,29 +27,38 @@ const toNumber = (value: unknown): number => {
 };
 
 const formatAxisMillions = (value: unknown) => `${(toNumber(value) / 1e6).toFixed(0)}M`;
-const formatTooltipVnd = (value: unknown) => formatVnd(toNumber(value));
 
-interface Props {
-  data: RevenueReportData | undefined;
-  view: RevenueReportData['view'];
-  onClassClick?: (classId: string, className: string) => void;
-  height?: number;
+function useChartFormatters() {
+  const { t } = useTranslation();
+  const { formatVnd } = useLocaleFormatters();
+  return { t, formatVnd };
 }
 
-export function RevenuePieByClass({ data, onClassClick, height = 280 }: Pick<Props, 'data' | 'onClassClick' | 'height'>) {
+export function RevenuePieByClass({
+  data,
+  onClassClick,
+  height = 280,
+}: {
+  data: RevenueReportData | undefined;
+  onClassClick?: (classId: string, className: string) => void;
+  height?: number;
+}) {
+  const { t, formatVnd } = useChartFormatters();
   const chartData =
-    data?.byClass?.map((c) => ({
+    data?.byClass?.map((c: { className: string; revenue: number; classId: string }) => ({
       name: c.className,
       value: c.revenue,
       classId: c.classId,
     })) || [];
+
+  const formatTooltipVnd = (value: unknown) => formatVnd(toNumber(value));
 
   if (chartData.length === 0) {
     return (
       <Paper withBorder p="md" radius="md" h={height}>
         <Group justify="center" h="100%">
           <Text c="dimmed" size="sm">
-            Chưa có dữ liệu doanh thu theo lớp
+            {t('reports.byClass.noData')}
           </Text>
         </Group>
       </Paper>
@@ -80,7 +84,7 @@ export function RevenuePieByClass({ data, onClassClick, height = 280 }: Pick<Pro
           }}
           style={{ cursor: onClassClick ? 'pointer' : 'default' }}
         >
-          {chartData.map((_, i) => (
+          {chartData.map((_: unknown, i: number) => (
             <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
           ))}
         </Pie>
@@ -91,19 +95,30 @@ export function RevenuePieByClass({ data, onClassClick, height = 280 }: Pick<Pro
   );
 }
 
-export function RevenueTrendChart({ data, view, height = 280 }: Pick<Props, 'data' | 'view' | 'height'>) {
+export function RevenueTrendChart({
+  data,
+  view,
+  height = 280,
+}: {
+  data: RevenueReportData | undefined;
+  view: RevenueReportData['view'];
+  height?: number;
+}) {
+  const { t, formatVnd } = useChartFormatters();
   const trend = data?.trend || [];
-  const chartData = trend.map((t) => ({
-    label: t.label || t.date,
-    amount: t.amount,
+  const chartData = trend.map((tr: { label?: string; date?: string; amount: number }) => ({
+    label: tr.label || tr.date,
+    amount: tr.amount,
   }));
+
+  const formatTooltipVnd = (value: unknown) => formatVnd(toNumber(value));
 
   if (chartData.length === 0) {
     return (
       <Paper withBorder p="md" radius="md" h={height}>
         <Group justify="center" h="100%">
           <Text c="dimmed" size="sm">
-            Chưa có dữ liệu xu hướng
+            {t('reports.emptyTrend')}
           </Text>
         </Group>
       </Paper>
@@ -142,19 +157,20 @@ export function RevenueByStudentTable({
   data: RevenueReportData | undefined;
   onStudentClick?: (studentId: string) => void;
 }) {
+  const { t, formatVnd } = useChartFormatters();
   const rows = data?.byStudent || [];
 
   if (rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        Chưa có dữ liệu doanh thu theo học sinh trong kỳ đã chọn
+        {t('reports.byStudent.noData')}
       </Text>
     );
   }
 
   return (
     <Stack gap="xs">
-      {rows.map((row, idx) => (
+      {rows.map((row: { studentId: string; studentName: string; paymentCount: number; revenue: number }, idx: number) => (
         <Group
           key={row.studentId}
           justify="space-between"
@@ -169,7 +185,7 @@ export function RevenueByStudentTable({
           <Text size="sm">{row.studentName}</Text>
           <Group gap="lg">
             <Text size="xs" c="dimmed">
-              {row.paymentCount} giao dịch
+              {t('reports.byStudent.transactions', { count: row.paymentCount })}
             </Text>
             <Text size="sm" fw={600}>
               {formatVnd(row.revenue)}
@@ -188,19 +204,20 @@ export function RevenueByClassList({
   data: RevenueReportData | undefined;
   onClassClick?: (classId: string, className: string) => void;
 }) {
+  const { t, formatVnd } = useChartFormatters();
   const rows = data?.byClass || [];
 
   if (rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        Chưa có dữ liệu theo lớp
+        {t('reports.emptyByClass')}
       </Text>
     );
   }
 
   return (
     <Stack gap="xs">
-      {rows.map((row) => (
+      {rows.map((row: { classId: string; className: string; revenue: number }) => (
         <Group
           key={row.classId}
           justify="space-between"
@@ -221,4 +238,12 @@ export function RevenueByClassList({
   );
 }
 
-export { formatVnd };
+// Re-exported for legacy callers (DashboardPage). Prefer useLocaleFormatters().
+export const formatVnd = (value: number, _lng?: string): string => {
+  if (value == null) return '0';
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value);
+};

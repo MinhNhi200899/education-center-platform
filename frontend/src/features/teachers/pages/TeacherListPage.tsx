@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Stack,
@@ -23,14 +23,25 @@ import {
   IconTrash,
   IconEye,
 } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import type { Teacher, PaginatedResult } from '@/types';
 
 export function TeacherListPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+
+  const STATUS_COLORS = useMemo(
+    () => ({
+      active: 'green',
+      inactive: 'yellow',
+      terminated: 'red',
+    }),
+    []
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['teachers', page, search],
@@ -52,29 +63,22 @@ export function TeacherListPage() {
     },
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'green';
-      case 'inactive': return 'yellow';
-      case 'terminated': return 'red';
-      default: return 'gray';
-    }
-  };
+  const getStatusColor = (status: string) => STATUS_COLORS[status as keyof typeof STATUS_COLORS] || 'gray';
 
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>Teachers</Title>
+        <Title order={2}>{t('teachers.list.title')}</Title>
         <Group gap="sm">
           <Button leftSection={<IconPlus size={16} />} onClick={() => navigate('/teachers/new')}>
-            Add Teacher
+            {t('teachers.list.addNew')}
           </Button>
         </Group>
       </Group>
 
       <Paper shadow="sm" p="md" radius="md">
         <TextInput
-          placeholder="Search by name, email..."
+          placeholder={t('teachers.list.searchPlaceholder')}
           leftSection={<IconSearch size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -84,11 +88,11 @@ export function TeacherListPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Email</Table.Th>
-              <Table.Th>Phone</Table.Th>
-              <Table.Th>Specialization</Table.Th>
-              <Table.Th>Status</Table.Th>
+              <Table.Th>{t('teachers.list.table.name')}</Table.Th>
+              <Table.Th>{t('teachers.list.table.email')}</Table.Th>
+              <Table.Th>{t('teachers.list.table.phone')}</Table.Th>
+              <Table.Th>{t('teachers.list.table.specialization')}</Table.Th>
+              <Table.Th>{t('teachers.list.table.status')}</Table.Th>
               <Table.Th w={60}></Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -103,7 +107,7 @@ export function TeacherListPage() {
                 <Table.Td>{teacher.specialization || '-'}</Table.Td>
                 <Table.Td>
                   <Badge color={getStatusColor(teacher.status)} variant="light">
-                    {teacher.status}
+                    {t(`teachers.status.${teacher.status}` as any)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>
@@ -115,14 +119,14 @@ export function TeacherListPage() {
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item leftSection={<IconEye size={14} />} onClick={() => navigate(`/teachers/${teacher.id}`)}>
-                        View Details
+                        {t('common.viewDetails')}
                       </Menu.Item>
                       <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => navigate(`/teachers/${teacher.id}/edit`)}>
-                        Edit
+                        {t('common.edit')}
                       </Menu.Item>
                       <Menu.Divider />
                       <Menu.Item leftSection={<IconTrash size={14} />} color="red" onClick={() => archiveMutation.mutate(teacher.id)}>
-                        Archive
+                        {t('common.archive')}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
@@ -134,9 +138,9 @@ export function TeacherListPage() {
 
         {data?.data.length === 0 && !isLoading && (
           <Stack align="center" py="xl">
-            <Text c="dimmed">No teachers found</Text>
+            <Text c="dimmed">{t('teachers.list.noTeachers')}</Text>
             <Button variant="light" onClick={() => navigate('/teachers/new')}>
-              Add your first teacher
+              {t('teachers.list.addFirst')}
             </Button>
           </Stack>
         )}

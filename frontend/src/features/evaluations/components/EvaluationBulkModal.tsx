@@ -13,10 +13,11 @@ import {
   ScrollArea,
   Badge,
 } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconUsers } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import type { EvaluationType } from '@/types';
 
@@ -36,19 +37,13 @@ interface RowState {
   comments: string;
 }
 
-const TYPE_OPTIONS: { value: EvaluationType; label: string }[] = [
-  { value: 'daily', label: 'Buổi học' },
-  { value: 'weekly', label: 'Tuần' },
-  { value: 'monthly', label: 'Tháng' },
-  { value: 'term', label: 'Học kỳ' },
-];
-
 interface Props {
   opened: boolean;
   onClose: () => void;
 }
 
 export function EvaluationBulkModal({ opened, onClose }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [classId, setClassId] = useState<string | null>(null);
   const [evaluationType, setEvaluationType] = useState<EvaluationType>('daily');
@@ -56,6 +51,16 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
     new Date().toISOString().slice(0, 10)
   );
   const [rows, setRows] = useState<RowState[]>([]);
+
+  const TYPE_OPTIONS = useMemo(
+    () => [
+      { value: 'daily' as EvaluationType, label: t('evaluations.types.daily') },
+      { value: 'weekly' as EvaluationType, label: t('evaluations.types.weekly') },
+      { value: 'monthly' as EvaluationType, label: t('evaluations.types.monthly') },
+      { value: 'term' as EvaluationType, label: t('evaluations.types.term') },
+    ],
+    [t]
+  );
 
   const { data: classes } = useQuery({
     queryKey: ['classes-select-eval'],
@@ -93,7 +98,7 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
 
   const bulkMutation = useMutation({
     mutationFn: async () => {
-      if (!classId) throw new Error('Chọn lớp');
+      if (!classId) throw new Error(t('evaluations.bulk.selectClassFirst'));
       const response = await api.post('/evaluations/bulk', {
         classId,
         evaluationType,
@@ -113,16 +118,16 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
     onSuccess: (data: { created: number }) => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
       notifications.show({
-        title: 'Thành công',
-        message: `Đã lưu nhận xét cho ${data.created} học sinh`,
+        title: t('evaluations.bulk.successTitle'),
+        message: t('evaluations.bulk.successMessage', { count: data.created }),
         color: 'green',
       });
       onClose();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       notifications.show({
-        title: 'Lỗi',
-        message: error.response?.data?.error?.message || 'Không thể lưu nhận xét hàng loạt',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('evaluations.bulk.failedMessage'),
         color: 'red',
       });
     },
@@ -139,7 +144,7 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
       title={
         <Group gap="xs">
           <IconUsers size={20} />
-          <Text fw={600}>Nhận xét cả lớp</Text>
+          <Text fw={600}>{t('evaluations.bulk.title')}</Text>
         </Group>
       }
       size="xl"
@@ -147,8 +152,8 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
       <Stack gap="md">
         <Group grow align="flex-end">
           <Select
-            label="Lớp học"
-            placeholder="Chọn lớp"
+            label={t('evaluations.bulk.class')}
+            placeholder={t('evaluations.bulk.selectClass')}
             data={(classes || []).map((c) => ({ value: c.id, label: c.name }))}
             value={classId}
             onChange={setClassId}
@@ -156,13 +161,13 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
             required
           />
           <Select
-            label="Loại nhận xét"
+            label={t('evaluations.bulk.type')}
             data={TYPE_OPTIONS}
             value={evaluationType}
             onChange={(v) => v && setEvaluationType(v as EvaluationType)}
           />
           <TextInput
-            label="Ngày"
+            label={t('evaluations.bulk.date')}
             type="date"
             value={evaluationDate}
             onChange={(e) => setEvaluationDate(e.currentTarget.value)}
@@ -172,19 +177,19 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
         {classId && (
           <>
             <Badge variant="light" color="violet">
-              {rows.length} học sinh trong lớp
+              {t('evaluations.bulk.studentCount', { count: rows.length })}
             </Badge>
             <ScrollArea h={420}>
               <Table striped highlightOnHover withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Học sinh</Table.Th>
-                    <Table.Th>Tham gia</Table.Th>
-                    <Table.Th>BTVN</Table.Th>
-                    <Table.Th>Thái độ</Table.Th>
-                    <Table.Th>Nói</Table.Th>
-                    <Table.Th>Viết</Table.Th>
-                    <Table.Th>Nhận xét</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.student')}</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.participation')}</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.homework')}</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.behavior')}</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.speaking')}</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.writing')}</Table.Th>
+                    <Table.Th>{t('evaluations.bulk.table.comments')}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -192,7 +197,7 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
                     <Table.Tr>
                       <Table.Td colSpan={7}>
                         <Text c="dimmed" ta="center">
-                          Đang tải danh sách...
+                          {t('evaluations.bulk.loadingList')}
                         </Text>
                       </Table.Td>
                     </Table.Tr>
@@ -285,7 +290,7 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
 
         <Group justify="flex-end">
           <Button variant="light" onClick={onClose}>
-            Hủy
+            {t('evaluations.bulk.cancel')}
           </Button>
           <Button
             leftSection={<IconCheck size={16} />}
@@ -293,7 +298,7 @@ export function EvaluationBulkModal({ opened, onClose }: Props) {
             disabled={!classId || rows.length === 0}
             onClick={() => bulkMutation.mutate()}
           >
-            Lưu nhận xét cả lớp
+            {t('evaluations.bulk.submit')}
           </Button>
         </Group>
       </Stack>

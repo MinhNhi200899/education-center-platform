@@ -20,11 +20,13 @@ import {
   IconWifiOff,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { getPendingCount, syncOfflineQueue } from '@/lib/attendance-offline';
 import type { Class } from '@/types';
 
 export function AttendanceHubPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [classId, setClassId] = useState<string | null>(null);
   const [pending, setPending] = useState(getPendingCount());
@@ -55,8 +57,8 @@ export function AttendanceHubPage() {
       const result = await syncOfflineQueue();
       if (result.synced > 0) {
         notifications.show({
-          title: 'Đồng bộ offline',
-          message: `Đã gửi ${result.synced} bản ghi điểm danh`,
+          title: t('attendance.mark.syncedTitle'),
+          message: t('attendance.mark.syncedMessage', { count: result.synced }),
           color: 'teal',
         });
         setPending(getPendingCount());
@@ -65,7 +67,7 @@ export function AttendanceHubPage() {
     runSync();
     window.addEventListener('online', runSync);
     return () => window.removeEventListener('online', runSync);
-  }, []);
+  }, [t]);
 
   const todaySessionId = todaySessions?.[0]?.id;
 
@@ -73,21 +75,21 @@ export function AttendanceHubPage() {
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2}>Điểm danh thông minh</Title>
+          <Title order={2}>{t('attendance.hub.title')}</Title>
           <Text c="dimmed" size="sm">
-            Chấm nhanh CÓ/VẮNG, điểm danh cả tháng, hỗ trợ offline
+            {t('attendance.hub.subtitle')}
           </Text>
         </div>
         {pending > 0 && (
           <Badge color="orange" leftSection={<IconWifiOff size={14} />}>
-            {pending} chờ đồng bộ
+            {t('attendance.hub.pendingSync', { count: pending })}
           </Badge>
         )}
       </Group>
 
       <Select
-        label="Chọn lớp"
-        placeholder="Chọn lớp học"
+        label={t('attendance.hub.selectClass')}
+        placeholder={t('attendance.hub.classPlaceholder')}
         data={classes?.map((c) => ({ value: c.id, label: c.name })) || []}
         value={classId}
         onChange={setClassId}
@@ -109,13 +111,13 @@ export function AttendanceHubPage() {
           <ThemeIcon size={48} radius="md" color="green" variant="light" mb="md">
             <IconCalendarCheck size={28} />
           </ThemeIcon>
-          <Text fw={700}>Điểm danh nhanh</Text>
+          <Text fw={700}>{t('attendance.hub.quickTitle')}</Text>
           <Text size="sm" c="dimmed" mt="xs">
-            Một chạm CÓ / VẮNG cho buổi hôm nay, ghi lý do vắng ngay
+            {t('attendance.hub.quickDesc')}
           </Text>
           {!todaySessionId && classId && (
             <Text size="xs" c="orange" mt="sm">
-              Chưa có buổi học hôm nay — tạo buổi ở mục điểm danh tháng
+              {t('attendance.hub.noSessionToday')}
             </Text>
           )}
         </Card>
@@ -130,9 +132,9 @@ export function AttendanceHubPage() {
           <ThemeIcon size={48} radius="md" color="blue" variant="light" mb="md">
             <IconCalendarMonth size={28} />
           </ThemeIcon>
-          <Text fw={700}>Điểm danh cả tháng</Text>
+          <Text fw={700}>{t('attendance.hub.monthlyTitle')}</Text>
           <Text size="sm" c="dimmed" mt="xs">
-            Lưới tháng — kéo chuột để điền hàng loạt
+            {t('attendance.hub.monthlyDesc')}
           </Text>
         </Card>
 
@@ -146,9 +148,9 @@ export function AttendanceHubPage() {
           <ThemeIcon size={48} radius="md" color="gray" variant="light" mb="md">
             <IconList size={28} />
           </ThemeIcon>
-          <Text fw={700}>Lịch sử điểm danh</Text>
+          <Text fw={700}>{t('attendance.hub.historyTitle')}</Text>
           <Text size="sm" c="dimmed" mt="xs">
-            Xem, lọc theo lớp và trạng thái
+            {t('attendance.hub.historyDesc')}
           </Text>
         </Card>
       </SimpleGrid>
@@ -158,7 +160,7 @@ export function AttendanceHubPage() {
           variant="light"
           onClick={() => navigate(`/attendance/monthly/${classId}`)}
         >
-          Tạo buổi học tháng này rồi điểm danh
+          {t('attendance.hub.createThenMark')}
         </Button>
       )}
     </Stack>

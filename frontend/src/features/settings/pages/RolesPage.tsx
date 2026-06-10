@@ -18,6 +18,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconUserPlus } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 
@@ -49,33 +50,8 @@ interface RbacUser {
   roles: Array<{ id: string; name: string; centerId?: string | null }>;
 }
 
-const LEVEL_LABELS: Record<number, string> = {
-  1: 'Read',
-  2: 'Create',
-  3: 'Update',
-  4: 'Delete',
-  5: 'Export',
-};
-
-const MODULE_LABELS: Record<string, string> = {
-  centers: 'Centers',
-  students: 'Students',
-  teachers: 'Teachers',
-  classes: 'Classes',
-  attendance: 'Attendance',
-  sessions: 'Sessions',
-  evaluations: 'Evaluations',
-  tuition: 'Tuition',
-  payments: 'Payments',
-  dashboard: 'Dashboard',
-  reports: 'Reports',
-  roles: 'Roles',
-  permissions: 'Permissions',
-  users: 'Users',
-  settings: 'Settings',
-};
-
 export function RolesPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
@@ -83,6 +59,35 @@ export function RolesPage() {
   const [assignUserId, setAssignUserId] = useState<string | null>(null);
   const [assignRoleId, setAssignRoleId] = useState<string | null>(null);
   const [permissionDraft, setPermissionDraft] = useState<string[]>([]);
+
+  const LEVEL_LABELS = useMemo(
+    () => ({
+      1: t('settings.roles.levelLabels.read'),
+      2: t('settings.roles.levelLabels.create'),
+      3: t('settings.roles.levelLabels.update'),
+      4: t('settings.roles.levelLabels.delete'),
+      5: t('settings.roles.levelLabels.export'),
+    }),
+    [t]
+  );
+
+  const MODULE_LABELS = useMemo(
+    () => ({
+      centers: t('settings.roles.moduleLabels.centers'),
+      students: t('settings.roles.moduleLabels.students'),
+      teachers: t('settings.roles.moduleLabels.teachers'),
+      classes: t('settings.roles.moduleLabels.classes'),
+      attendance: t('settings.roles.moduleLabels.attendance'),
+      evaluations: t('settings.roles.moduleLabels.evaluations'),
+      schedule: t('settings.roles.moduleLabels.schedule'),
+      tuition: t('settings.roles.moduleLabels.tuition'),
+      payments: t('settings.roles.moduleLabels.payments'),
+      dashboard: t('settings.roles.moduleLabels.dashboard'),
+      reports: t('settings.roles.moduleLabels.reports'),
+      settings: t('settings.roles.moduleLabels.settings'),
+    }),
+    [t]
+  );
 
   const { data: roles, isLoading: rolesLoading } = useQuery({
     queryKey: ['rbac-roles'],
@@ -138,15 +143,15 @@ export function RolesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac-users'] });
-      notifications.show({ title: 'Assigned', message: 'Role assigned to user', color: 'green' });
+      notifications.show({ title: t('settings.roles.assignedTitle'), message: t('settings.roles.assignedMessage'), color: 'green' });
       setAssignOpen(false);
       setAssignUserId(null);
       setAssignRoleId(null);
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Error',
-        message: error.response?.data?.error?.message || 'Failed to assign role',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('settings.roles.assignFailed'),
         color: 'red',
       });
     },
@@ -161,12 +166,12 @@ export function RolesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac-role', selectedRoleId] });
-      notifications.show({ title: 'Saved', message: 'Role permissions updated', color: 'green' });
+      notifications.show({ title: t('settings.roles.savedTitle'), message: t('settings.roles.savedMessage'), color: 'green' });
     },
     onError: (error: any) => {
       notifications.show({
-        title: 'Error',
-        message: error.response?.data?.error?.message || 'Failed to update permissions',
+        title: t('common.error'),
+        message: error.response?.data?.error?.message || t('settings.roles.saveFailed'),
         color: 'red',
       });
     },
@@ -187,21 +192,21 @@ export function RolesPage() {
     <Stack gap="lg">
       <Group justify="space-between">
         <div>
-          <Title order={2}>Roles & Permissions</Title>
+          <Title order={2}>{t('settings.roles.title')}</Title>
           <Text c="dimmed" size="sm">
-            4-level access: Read → Create → Update → Delete (Export where applicable)
+            {t('settings.roles.subtitle')}
           </Text>
         </div>
         <Button leftSection={<IconUserPlus size={16} />} onClick={() => setAssignOpen(true)}>
-          Assign role to user
+          {t('settings.roles.assignRole')}
         </Button>
       </Group>
 
       <Tabs defaultValue="roles">
         <Tabs.List>
-          <Tabs.Tab value="roles">Roles</Tabs.Tab>
-          <Tabs.Tab value="matrix">Permission matrix</Tabs.Tab>
-          <Tabs.Tab value="users">Users</Tabs.Tab>
+          <Tabs.Tab value="roles">{t('settings.roles.tabs.roles')}</Tabs.Tab>
+          <Tabs.Tab value="matrix">{t('settings.roles.tabs.matrix')}</Tabs.Tab>
+          <Tabs.Tab value="users">{t('settings.roles.tabs.users')}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="roles" pt="md">
@@ -212,10 +217,10 @@ export function RolesPage() {
               <Table striped>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Role</Table.Th>
-                    <Table.Th>Description</Table.Th>
-                    <Table.Th>Type</Table.Th>
-                    <Table.Th>Status</Table.Th>
+                    <Table.Th>{t('settings.roles.table.role')}</Table.Th>
+                    <Table.Th>{t('common.description')}</Table.Th>
+                    <Table.Th>{t('settings.roles.table.type')}</Table.Th>
+                    <Table.Th>{t('common.status')}</Table.Th>
                     <Table.Th></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -227,16 +232,16 @@ export function RolesPage() {
                       </Table.Td>
                       <Table.Td>{role.description || '-'}</Table.Td>
                       <Table.Td>
-                        <Badge variant="light">{role.isSystem ? 'System' : 'Custom'}</Badge>
+                        <Badge variant="light">{role.isSystem ? t('settings.roles.table.system') : t('settings.roles.table.custom')}</Badge>
                       </Table.Td>
                       <Table.Td>
                         <Badge color={role.isActive ? 'green' : 'gray'} variant="light">
-                          {role.isActive ? 'Active' : 'Inactive'}
+                          {role.isActive ? t('settings.roles.table.active') : t('settings.roles.table.inactive')}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
                         <Button size="xs" variant="light" onClick={() => openRole(role.id)}>
-                          Configure
+                          {t('settings.roles.configure')}
                         </Button>
                       </Table.Td>
                     </Table.Tr>
@@ -253,12 +258,12 @@ export function RolesPage() {
               <Table withTableBorder withColumnBorders>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Module</Table.Th>
-                    <Table.Th>Read</Table.Th>
-                    <Table.Th>Create</Table.Th>
-                    <Table.Th>Update</Table.Th>
-                    <Table.Th>Delete</Table.Th>
-                    <Table.Th>Export</Table.Th>
+                    <Table.Th>{t('settings.roles.table.module')}</Table.Th>
+                    <Table.Th>{t('settings.roles.levelLabels.read')}</Table.Th>
+                    <Table.Th>{t('settings.roles.levelLabels.create')}</Table.Th>
+                    <Table.Th>{t('settings.roles.levelLabels.update')}</Table.Th>
+                    <Table.Th>{t('settings.roles.levelLabels.delete')}</Table.Th>
+                    <Table.Th>{t('settings.roles.levelLabels.export')}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -267,7 +272,7 @@ export function RolesPage() {
                       perms.find((p) => p.level === level)?.name ?? '—';
                     return (
                       <Table.Tr key={module}>
-                        <Table.Td fw={500}>{MODULE_LABELS[module] || module}</Table.Td>
+                        <Table.Td fw={500}>{MODULE_LABELS[module as keyof typeof MODULE_LABELS] || module}</Table.Td>
                         <Table.Td>{byLevel(1)}</Table.Td>
                         <Table.Td>{byLevel(2)}</Table.Td>
                         <Table.Td>{byLevel(3)}</Table.Td>
@@ -287,9 +292,9 @@ export function RolesPage() {
             <Table striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Email</Table.Th>
-                  <Table.Th>Roles</Table.Th>
-                  <Table.Th>Status</Table.Th>
+                  <Table.Th>{t('common.email')}</Table.Th>
+                  <Table.Th>{t('settings.roles.table.roles')}</Table.Th>
+                  <Table.Th>{t('common.status')}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -299,7 +304,7 @@ export function RolesPage() {
                     <Table.Td>
                       <Group gap={4}>
                         {u.roles.length === 0 ? (
-                          <Text size="sm" c="dimmed">None</Text>
+                          <Text size="sm" c="dimmed">{t('common.none')}</Text>
                         ) : (
                           u.roles.map((r) => (
                             <Badge key={`${u.id}-${r.id}`} variant="light" size="sm">
@@ -326,7 +331,7 @@ export function RolesPage() {
           setSelectedRoleId(null);
           setPermissionDraft([]);
         }}
-        title={roleDetail ? `Permissions: ${roleDetail.name}` : 'Role permissions'}
+        title={roleDetail ? `${t('settings.roles.permissionsFor')} ${roleDetail.name}` : t('settings.roles.permissionsTitle')}
         size="lg"
       >
         {roleDetailLoading ? (
@@ -335,7 +340,7 @@ export function RolesPage() {
           <Stack gap="md">
             {roleDetail?.isSystem && (
               <Text size="sm" c="dimmed">
-                System role — permission changes may be restricted in production.
+                {t('settings.roles.systemWarning')}
               </Text>
             )}
             <ScrollArea h={360}>
@@ -343,7 +348,7 @@ export function RolesPage() {
                 {permissions?.map((perm) => (
                   <Checkbox
                     key={perm.id}
-                    label={`${perm.name} (${LEVEL_LABELS[perm.level] || perm.level})`}
+                    label={`${perm.name} (${LEVEL_LABELS[perm.level as keyof typeof LEVEL_LABELS] || perm.level})`}
                     checked={permissionDraft.includes(perm.id)}
                     onChange={(e) => {
                       setPermissionDraft((prev) =>
@@ -362,26 +367,26 @@ export function RolesPage() {
                 loading={savePermissionsMutation.isPending}
                 disabled={roleDetail?.isSystem && roleDetail.name === 'super_admin'}
               >
-                Save permissions
+                {t('settings.roles.savePermissions')}
               </Button>
             </Group>
           </Stack>
         )}
       </Modal>
 
-      <Modal opened={assignOpen} onClose={() => setAssignOpen(false)} title="Assign role to user">
+      <Modal opened={assignOpen} onClose={() => setAssignOpen(false)} title={t('settings.roles.assignRole')}>
         <Stack gap="md">
           <Select
-            label="User"
-            placeholder="Select user"
+            label={t('settings.roles.table.user')}
+            placeholder={t('settings.roles.selectUser')}
             data={(users ?? []).map((u) => ({ value: u.id, label: u.email }))}
             value={assignUserId}
             onChange={setAssignUserId}
             searchable
           />
           <Select
-            label="Role"
-            placeholder="Select role"
+            label={t('settings.roles.table.role')}
+            placeholder={t('settings.roles.selectRole')}
             data={(roles ?? [])
               .filter((r) => r.isActive)
               .map((r) => ({ value: r.id, label: r.name }))}
@@ -391,14 +396,14 @@ export function RolesPage() {
           />
           <Group justify="flex-end">
             <Button variant="light" onClick={() => setAssignOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={() => assignMutation.mutate()}
               loading={assignMutation.isPending}
               disabled={!assignUserId || !assignRoleId}
             >
-              Assign
+              {t('common.assign')}
             </Button>
           </Group>
         </Stack>

@@ -44,7 +44,7 @@ export class TeacherService {
         address: data.address || null,
         qualification: data.qualification || null,
         specialization: data.specialization || null,
-        hireDate: data.hireDate ? new Date(data.hireDate) : null,
+        hireDate: data.hireDate ? new Date(data.hireDate) : new Date(),
         salary: data.salary ?? null,
         notes: data.notes || null,
         status: TeacherStatus.active,

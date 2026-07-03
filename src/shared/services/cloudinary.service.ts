@@ -73,7 +73,7 @@ export async function uploadHomeworkDocument(
 
   const baseName = originalName.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_').slice(0, 80);
 
-  const result = await new Promise<cloudinary.UploadApiResponse>((resolve, reject) => {
+  const result = await new Promise<{ secure_url: string; public_id?: string }>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         resource_type: 'raw',
@@ -94,7 +94,7 @@ export async function uploadHomeworkDocument(
     fileName: originalName,
     fileType: inferMimeType(ext),
     fileSize: buffer.length,
-    publicId: result.public_id,
+    publicId: result.public_id ?? '',
   };
 }
 

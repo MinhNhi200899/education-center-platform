@@ -147,10 +147,10 @@ function getDriveClient(): { drive: drive_v3.Drive; folderId: string; sharedDriv
   };
 }
 
-function driveOptions(sharedDrive: boolean): Pick<
-  drive_v3.Params$Resource$Files$Create,
-  'supportsAllDrives' | 'includeItemsFromAllDrives'
-> {
+function driveOptions(sharedDrive: boolean): {
+  supportsAllDrives?: boolean;
+  includeItemsFromAllDrives?: boolean;
+} {
   return sharedDrive ? { supportsAllDrives: true, includeItemsFromAllDrives: true } : {};
 }
 

@@ -8,9 +8,7 @@ import {
   Grid,
   Badge,
   Divider,
-  Select,
   Image,
-  Box,
   Card,
   CopyButton,
   ActionIcon,
@@ -19,13 +17,12 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   IconArrowLeft,
   IconCheck,
   IconQrcode,
   IconMessageShare,
-  IconPrinter,
   IconSend,
   IconCopy,
 } from '@tabler/icons-react';
@@ -39,7 +36,6 @@ export function PaymentPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [theme, setTheme] = useState<string>('classic');
 
   const STATUS_COLORS = useMemo(
     () => ({
@@ -56,15 +52,6 @@ export function PaymentPage() {
     queryKey: ['invoice', id],
     queryFn: async () => {
       const response = await api.get(`/tuition/invoices/${id}`);
-      return response.data.data;
-    },
-    enabled: !!id,
-  });
-
-  const { data: preview } = useQuery({
-    queryKey: ['invoice-preview', id, theme],
-    queryFn: async () => {
-      const response = await api.get(`/tuition/invoices/${id}/preview?theme=${theme}`);
       return response.data.data;
     },
     enabled: !!id,
@@ -132,16 +119,6 @@ export function PaymentPage() {
       }),
   });
 
-  const handlePrint = () => {
-    if (!preview?.html) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(preview.html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-  };
-
   if (!invoice) {
     return (
       <Stack>
@@ -149,16 +126,6 @@ export function PaymentPage() {
       </Stack>
     );
   }
-
-  const themeOptions =
-    preview?.themes?.map((th: { id: string; label: string }) => ({ value: th.id, label: th.label })) || [
-      { value: 'classic', label: t('payments.payment.theme.classic') },
-      { value: 'modern', label: t('payments.payment.theme.modern') },
-      { value: 'minimal', label: t('payments.payment.theme.minimal') },
-      { value: 'colorful', label: t('payments.payment.theme.colorful') },
-      { value: 'formal', label: t('payments.payment.theme.formal') },
-      { value: 'elegant', label: t('payments.payment.theme.elegant') },
-    ];
 
   return (
     <Stack gap="lg">
@@ -264,30 +231,6 @@ export function PaymentPage() {
                 </>
               )}
             </Group>
-          </Paper>
-
-          <Paper shadow="sm" p="lg" radius="md" mt="md">
-            <Group justify="space-between" mb="md">
-              <Title order={4}>{t('payments.payment.preview')}</Title>
-              <Group>
-                <Select data={themeOptions} value={theme} onChange={(v) => setTheme(v || 'classic')} w={160} />
-                <Button variant="light" leftSection={<IconPrinter size={16} />} onClick={handlePrint}>
-                  {t('payments.payment.print')}
-                </Button>
-              </Group>
-            </Group>
-            {preview?.html && (
-              <Box
-                style={{
-                  border: '1px solid #eee',
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                  maxHeight: 480,
-                  overflowY: 'auto',
-                }}
-                dangerouslySetInnerHTML={{ __html: preview.html.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] || preview.html }}
-              />
-            )}
           </Paper>
         </Grid.Col>
 

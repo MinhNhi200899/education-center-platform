@@ -6,6 +6,7 @@ import {
   ValidationException,
   NotFoundException,
   ConflictException,
+  BadRequestException,
   UnauthorizedException,
   ForbiddenException,
   AccountLockedException,
@@ -70,6 +71,19 @@ export const errorHandler = (
 
   if (error instanceof ConflictException) {
     res.status(409).json({
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        timestamp: new Date().toISOString(),
+        path: req.path,
+      },
+    });
+    return;
+  }
+
+  if (error instanceof BadRequestException) {
+    res.status(400).json({
       success: false,
       error: {
         code: error.code,

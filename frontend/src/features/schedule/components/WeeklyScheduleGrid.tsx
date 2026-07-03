@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next';
 import type { ScheduleSession } from '../types';
 import { SessionStatusBadge } from './SessionStatusBadge';
 
+function getTodayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T12:00:00`);
   d.setDate(d.getDate() + days);
@@ -32,9 +37,21 @@ export function WeeklyScheduleGrid({ weekStart, sessions, onSelectSession }: Pro
       {dayKeys.map((d, i) => {
         const dayDate = d.date.toISOString().split('T')[0];
         const daySessions = sessions.filter((s) => s.sessionDate === dayDate);
+        const today = dayDate === getTodayIso();
         return (
-          <Paper key={i} withBorder p="sm" radius="md" mih={140}>
-            <GroupHeader label={t(d.i18n)} date={dayDate} count={daySessions.length} />
+          <Paper
+            key={i}
+            withBorder
+            p="sm"
+            radius="md"
+            mih={140}
+            style={{
+              background: today ? 'var(--mantine-color-yellow-0)' : undefined,
+              borderColor: today ? 'var(--mantine-color-yellow-5)' : undefined,
+              borderWidth: today ? 2 : undefined,
+            }}
+          >
+            <GroupHeader label={t(d.i18n)} date={dayDate} count={daySessions.length} isToday={today} />
             <Stack gap={6} mt="xs">
               {daySessions.length === 0 ? (
                 <Text size="xs" c="dimmed">
@@ -75,16 +92,19 @@ function GroupHeader({
   label,
   date,
   count,
+  isToday,
 }: {
   label: string;
   date: string;
   count: number;
+  isToday?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <Stack gap={2}>
-      <Text fw={700} size="sm">
+      <Text fw={700} size="sm" c={isToday ? 'yellow.9' : undefined}>
         {label}
+        {isToday ? ` · ${t('portal.teacher.schedule.today')}` : ''}
       </Text>
       <Text size="xs" c="dimmed">
         {date.slice(5).replace('-', '/')}

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { attendanceService } from './services/attendance.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
+import { prisma } from '../../config/database';
 
 /**
  * Get attendance records with filters
@@ -209,10 +210,22 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
  */
 export const getSessionAttendance = asyncHandler(async (req: Request, res: Response) => {
   const students = await attendanceService.getSessionWithEnrollments(req.params.id);
+  const session = await prisma.session.findUnique({
+    where: { id: req.params.id },
+    select: { notes: true, attendanceScreenshotUrl: true },
+  });
+  const existingCount = await prisma.attendanceRecord.count({
+    where: { sessionId: req.params.id },
+  });
 
   res.json({
     success: true,
-    data: students,
+    data: {
+      sessionNote: session?.notes ?? null,
+      attendanceScreenshotUrl: session?.attendanceScreenshotUrl ?? null,
+      attendanceLocked: existingCount > 0,
+      students,
+    },
     meta: {
       count: students.length,
       timestamp: new Date().toISOString(),

@@ -70,6 +70,20 @@ export const mockPrismaClient = {
     create: vi.fn(),
     update: vi.fn(),
   },
+  role: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  userRole: {
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    deleteMany: vi.fn(),
+  },
   refreshToken: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),

@@ -27,7 +27,12 @@ export const createStudentSchema = z.object({
       .regex(/^(0[0-9]{9,10})$/, 'Invalid Vietnamese phone number')
       .optional()
       .or(z.literal('')),
-    email: z.string().email('Invalid email format').optional().or(z.literal('')),
+    email: z.string().email('Invalid email format'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .optional()
+      .or(z.literal('')),
     address: z.string().max(500).optional(),
     avatarUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
     enrollmentDate: z

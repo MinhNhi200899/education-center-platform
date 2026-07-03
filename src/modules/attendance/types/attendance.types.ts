@@ -32,6 +32,8 @@ export interface BulkAttendanceDTO {
  */
 export interface CreateAttendanceSessionDTO {
   sessionId: string;
+  sessionNote?: string;
+  attendanceScreenshotUrl: string;
   defaultStatus?: AttendanceStatus; // Default status for all students (e.g., 'present')
   records?: Array<{
     studentId: string;

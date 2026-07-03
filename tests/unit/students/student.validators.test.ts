@@ -38,6 +38,7 @@ describe('Student Validators', () => {
         dateOfBirth: '2010-05-15',
         gender: 'male',
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: invalidData });
@@ -51,6 +52,7 @@ describe('Student Validators', () => {
         dateOfBirth: '2010-05-15',
         gender: 'male',
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: invalidData });
@@ -64,6 +66,7 @@ describe('Student Validators', () => {
         dateOfBirth: '2010-05-15',
         gender: 'male',
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: invalidData });
@@ -77,6 +80,7 @@ describe('Student Validators', () => {
         dateOfBirth: '2010-05-15',
         gender: 'invalid',
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: invalidData });
@@ -93,6 +97,7 @@ describe('Student Validators', () => {
         dateOfBirth: futureDate.toISOString().split('T')[0],
         gender: 'male',
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: invalidData });
@@ -107,6 +112,7 @@ describe('Student Validators', () => {
         gender: 'male',
         phone: '12345', // Too short
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: invalidData });
@@ -134,6 +140,7 @@ describe('Student Validators', () => {
         dateOfBirth: '2010-05-15',
         gender: 'male',
         enrollmentDate: '2024-01-01',
+        email: 'john@example.com',
       };
 
       const result = createStudentSchema.safeParse({ body: validData });

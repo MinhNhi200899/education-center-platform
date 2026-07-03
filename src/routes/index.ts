@@ -10,10 +10,12 @@ import dashboardRoutes from '../modules/dashboard/dashboard.routes';
 import evaluationsRoutes from '../modules/evaluations/evaluations.routes';
 import reportsRoutes from '../modules/reports/reports.routes';
 import sessionsRoutes from '../modules/sessions/sessions.routes';
+import uploadsRoutes from '../modules/uploads/uploads.routes';
 import scheduleRoutes from '../modules/schedule/schedule.routes';
 import centersRoutes from '../modules/centers/centers.routes';
 import portalRoutes from '../modules/portal/portal.routes';
 import teacherPortalRoutes from '../modules/teacher-portal/teacher-portal.routes';
+import webhooksRoutes from '../modules/webhooks/webhooks.routes';
 
 const router = Router();
 
@@ -24,6 +26,9 @@ router.get('/health', (req, res) => {
 
 // Auth routes
 router.use('/auth', authRoutes);
+
+// Webhooks (public — no auth)
+router.use('/webhooks', webhooksRoutes);
 
 // RBAC routes
 router.use('/rbac', rbacRoutes);
@@ -45,6 +50,9 @@ router.use('/schedule', scheduleRoutes);
 
 // Sessions routes
 router.use('/sessions', sessionsRoutes);
+
+// File uploads (Cloudinary)
+router.use('/uploads', uploadsRoutes);
 
 // Payments routes
 router.use('/payments', paymentsRoutes);

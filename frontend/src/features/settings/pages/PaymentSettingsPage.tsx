@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Stack, Title, Paper, TextInput, Button, Group, Text, Select, Loader } from '@mantine/core';
+import { useEffect } from 'react';
+import { Stack, Title, Paper, TextInput, Button, Group, Text, Loader } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
@@ -7,6 +7,7 @@ import { IconDeviceFloppy } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
+import { BankSelect } from '@/components/BankSelect';
 
 interface PaymentSettings {
   centerId: string;
@@ -21,19 +22,6 @@ export function PaymentSettingsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const centerId = user?.centerId;
-
-  const BANK_OPTIONS = useMemo(
-    () => [
-      { value: 'VCB', label: t('settings.payments.banks.VCB') },
-      { value: 'TCB', label: t('settings.payments.banks.TCB') },
-      { value: 'BIDV', label: t('settings.payments.banks.BIDV') },
-      { value: 'VTB', label: t('settings.payments.banks.VTB') },
-      { value: 'MB', label: t('settings.payments.banks.MB') },
-      { value: 'ACB', label: t('settings.payments.banks.ACB') },
-      { value: 'VPB', label: t('settings.payments.banks.VPB') },
-    ],
-    [t]
-  );
 
   const form = useForm({
     initialValues: {
@@ -109,11 +97,7 @@ export function PaymentSettingsPage() {
         ) : (
           <form onSubmit={form.onSubmit((values) => saveMutation.mutate(values))}>
             <Stack gap="md">
-              <Select
-                label={t('settings.payments.bank')}
-                placeholder={t('settings.payments.selectBank')}
-                data={BANK_OPTIONS}
-                searchable
+              <BankSelect
                 required
                 {...form.getInputProps('vietqrBankId')}
               />

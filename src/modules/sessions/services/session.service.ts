@@ -7,6 +7,10 @@ import {
   ConflictException,
   ForbiddenException,
 } from '../../../shared/types/error.types';
+import {
+  assertSessionAllowsHomework,
+  assertSessionAllowsReschedule,
+} from '../../../shared/utils/session-timing';
 
 const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID ?? '';
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -31,8 +35,12 @@ export interface UpdateSessionDTO {
 }
 
 export interface AddSessionMaterialDTO {
-  driveUrl: string;
-  fileName: string;
+  driveUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+  driveFileId?: string;
 }
 
 export class SessionService {
@@ -260,13 +268,29 @@ export class SessionService {
   async update(sessionId: string, userId: string, data: UpdateSessionDTO) {
     const existing = await prisma.session.findUnique({
       where: { id: sessionId },
-      include: { class: { select: { id: true, name: true } } },
+      include: {
+        class: { select: { id: true, name: true } },
+        _count: { select: { attendanceRecords: true } },
+      },
     });
     if (!existing) {
       throw new NotFoundException('Session');
     }
 
     await this.assertTeacherCanAccessClass(userId, existing.classId);
+
+    const isHomeworkUpdate =
+      data.notes !== undefined &&
+      data.notes !== (existing.notes ?? null) &&
+      !data.sessionDate &&
+      !data.startTime &&
+      !data.endTime &&
+      data.classroom === undefined &&
+      !data.status;
+
+    if (isHomeworkUpdate) {
+      assertSessionAllowsHomework(existing);
+    }
 
     if (data.status && !Object.values(SessionStatus).includes(data.status)) {
       throw new ValidationException('Invalid session status');
@@ -281,6 +305,16 @@ export class SessionService {
       data.classroom !== undefined ? data.classroom : existing.classroom;
 
     this.assertValidTimeRange(startTime, endTime);
+
+    const isReschedule =
+      (data.sessionDate !== undefined &&
+        data.sessionDate !== existing.sessionDate.toISOString().split('T')[0]) ||
+      (data.startTime !== undefined && data.startTime !== existing.startTime) ||
+      (data.endTime !== undefined && data.endTime !== existing.endTime);
+
+    if (isReschedule) {
+      assertSessionAllowsReschedule(existing, existing._count.attendanceRecords);
+    }
 
     const conflicts = await this.checkSessionConflicts({
       teacherUserId: existing.teacherId,
@@ -349,25 +383,32 @@ export class SessionService {
       throw new NotFoundException('Session');
     }
 
-    if (!data.driveUrl?.trim()) {
-      throw new ValidationException('driveUrl is required');
+    assertSessionAllowsHomework(session);
+
+    const fileUrl = (data.fileUrl ?? data.driveUrl)?.trim();
+    if (!fileUrl) {
+      throw new ValidationException('fileUrl is required');
     }
 
     const material = await prisma.sessionMaterial.create({
       data: {
         sessionId,
-        fileUrl: data.driveUrl.trim(),
-        fileName: data.fileName?.trim() || 'Google Drive file',
-        fileType: 'google_drive',
-        fileSize: 0,
+        fileUrl,
+        fileName: data.fileName?.trim() || 'Attachment',
+        fileType: data.fileType?.trim() || (data.driveUrl ? 'google_drive' : 'document'),
+        fileSize: data.fileSize ?? 0,
+        driveFileId:
+          data.driveFileId?.trim() ||
+          (data.driveUrl ? this.extractDriveFileId(data.driveUrl) : null) ||
+          this.extractDriveFileId(fileUrl),
         uploadedBy,
       },
     });
 
-    logger.info('Session material linked (Google Drive stub)', {
+    logger.info('Session material linked', {
       sessionId,
       materialId: material.id,
-      folderId: GOOGLE_DRIVE_FOLDER_ID || 'not_configured',
+      fileType: material.fileType,
     });
 
     return {
@@ -375,7 +416,8 @@ export class SessionService {
       fileUrl: material.fileUrl,
       fileName: material.fileName,
       fileType: material.fileType,
-      driveFileId: this.extractDriveFileId(data.driveUrl),
+      fileSize: material.fileSize,
+      driveFileId: material.driveFileId,
       googleDriveFolderId: GOOGLE_DRIVE_FOLDER_ID || null,
       createdAt: material.createdAt,
     };

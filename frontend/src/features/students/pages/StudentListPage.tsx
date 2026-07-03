@@ -17,6 +17,8 @@ import {
   Modal,
   FileButton,
   List,
+  CopyButton,
+  Tooltip,
 } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
@@ -29,6 +31,7 @@ import {
   IconEye,
   IconDownload,
   IconUpload,
+  IconCopy,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -230,6 +233,7 @@ export function StudentListPage() {
               <Table.Th>{t('students.list.table.dob')}</Table.Th>
               <Table.Th>{t('students.list.table.gender')}</Table.Th>
               <Table.Th>{t('students.list.table.phone')}</Table.Th>
+              <Table.Th>{t('students.list.table.password')}</Table.Th>
               <Table.Th>{t('students.list.table.status')}</Table.Th>
               <Table.Th>{t('students.list.table.enrollmentDate')}</Table.Th>
               <Table.Th w={60}></Table.Th>
@@ -244,6 +248,26 @@ export function StudentListPage() {
                 <Table.Td>{formatDate(student.dateOfBirth)}</Table.Td>
                 <Table.Td>{student.gender}</Table.Td>
                 <Table.Td>{student.phone || '-'}</Table.Td>
+                <Table.Td>
+                  {student.loginPassword ? (
+                    <Group gap={4} wrap="nowrap">
+                      <Text ff="monospace" size="sm">
+                        {student.loginPassword}
+                      </Text>
+                      <CopyButton value={student.loginPassword}>
+                        {({ copied, copy }) => (
+                          <Tooltip label={copied ? t('common.copied') : t('common.copy')}>
+                            <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} size="sm" onClick={copy}>
+                              <IconCopy size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </CopyButton>
+                    </Group>
+                  ) : (
+                    '-'
+                  )}
+                </Table.Td>
                 <Table.Td>
                   <Badge color={getStatusColor(student.status)} variant="light">
                     {t(`students.status.${student.status}` as any)}
@@ -310,6 +334,8 @@ export function StudentListPage() {
         opened={importModalOpen}
         onClose={() => setImportModalOpen(false)}
         title={t('students.list.import.title')}
+      
+        centered
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">

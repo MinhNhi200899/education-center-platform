@@ -9,10 +9,16 @@ export interface CreateStudentDTO {
   gender: Gender;
   phone?: string;
   email?: string;
+  password?: string;
   address?: string;
   avatarUrl?: string;
   enrollmentDate: Date | string;
   notes?: string;
+}
+
+export interface CreateStudentResult extends StudentResponse {
+  loginEmail?: string;
+  initialPassword?: string;
 }
 
 export interface UpdateStudentDTO {
@@ -49,6 +55,7 @@ export interface StudentResponse {
   enrollmentDate: Date;
   status: StudentStatus;
   notes: string | null;
+  loginPassword?: string | null;
   centerId: string;
   createdAt: Date;
   updatedAt: Date;

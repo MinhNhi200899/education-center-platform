@@ -104,6 +104,9 @@ export class ClassService {
           },
           orderBy: { enrolledAt: 'desc' },
         },
+        _count: {
+          select: { enrollments: { where: { status: 'active' } } },
+        },
       },
     });
 
@@ -435,21 +438,40 @@ export class ClassService {
       throw new NotFoundException('Class');
     }
 
-    // Check capacity
+    // Load existing enrollments for these students (any status)
+    const existingEnrollments = await prisma.enrollment.findMany({
+      where: { classId, studentId: { in: studentIds } },
+      select: { id: true, studentId: true, status: true },
+    });
+    const existingByStudentId = new Map(existingEnrollments.map((e) => [e.studentId, e]));
+
+    const alreadyActiveIds: string[] = [];
+    const toReactivateIds: string[] = [];
+    const toCreateIds: string[] = [];
+    for (const sid of studentIds) {
+      const ex = existingByStudentId.get(sid);
+      if (!ex) toCreateIds.push(sid);
+      else if (ex.status === 'active') alreadyActiveIds.push(sid);
+      else toReactivateIds.push(sid);
+    }
+
+    const toEnrollIds = [...toCreateIds, ...toReactivateIds];
+
+    // Check capacity (only for net-new enrollments)
     const availableSlots = classRecord.capacity - classRecord._count.enrollments;
-    if (studentIds.length > availableSlots) {
+    if (toEnrollIds.length > availableSlots) {
       throw new BadRequestException(
-        `Only ${availableSlots} slots available. Cannot enroll ${studentIds.length} students.`,
+        `Only ${availableSlots} slots available. Cannot enroll ${toEnrollIds.length} students.`,
         'CAPACITY_EXCEEDED'
       );
     }
 
-    // Verify all students exist and are active
+    // Verify all students exist and are active (only for net-new/re-activated)
     const students = await prisma.student.findMany({
-      where: { id: { in: studentIds }, status: 'active' },
+      where: { id: { in: toEnrollIds }, status: 'active' },
     });
 
-    if (students.length !== studentIds.length) {
+    if (students.length !== toEnrollIds.length) {
       throw new BadRequestException('One or more students not found or not active');
     }
 
@@ -459,45 +481,62 @@ export class ClassService {
       throw new BadRequestException('All students must belong to the same center as the class');
     }
 
-    // Check for existing active enrollments
-    const existingEnrollments = await prisma.enrollment.findMany({
-      where: { classId, studentId: { in: studentIds }, status: 'active' },
-    });
-
-    if (existingEnrollments.length > 0) {
-      const existingStudentIds = existingEnrollments.map((e) => e.studentId);
-      throw new ConflictException(
-        `${existingStudentIds.length} students are already enrolled in this class`,
-        'ALREADY_ENROLLED'
-      );
+    // If everything was already enrolled, treat as a no-op success
+    if (toEnrollIds.length === 0) {
+      return {
+        enrollments: [],
+        message: 'No new students to enroll (all selected students are already enrolled)',
+      };
     }
 
     // Enroll students in transaction
     const effectiveStartDate = startDate ? new Date(startDate) : classRecord.startDate;
     const enrollments = await prisma.$transaction(async (tx) => {
-      const created = await tx.enrollment.createMany({
-        data: studentIds.map((studentId) => ({
-          studentId,
-          classId,
-          enrolledAt: new Date(),
-          startDate: effectiveStartDate,
-          status: 'active',
-          notes: notes || null,
-        })),
-      });
+      // Reactivate old enrollments (withdrawn/completed)
+      if (toReactivateIds.length > 0) {
+        await tx.enrollment.updateMany({
+          where: { classId, studentId: { in: toReactivateIds } },
+          data: {
+            status: 'active',
+            startDate: effectiveStartDate,
+            endDate: null,
+            notes: notes || null,
+          },
+        });
+      }
 
-      // Fetch created enrollments
+      // Create new enrollments
+      if (toCreateIds.length > 0) {
+        await tx.enrollment.createMany({
+          data: toCreateIds.map((studentId) => ({
+            studentId,
+            classId,
+            enrolledAt: new Date(),
+            startDate: effectiveStartDate,
+            status: 'active',
+            notes: notes || null,
+          })),
+        });
+      }
+
+      // Fetch active enrollments affected
       return tx.enrollment.findMany({
-        where: { classId, studentId: { in: studentIds } },
+        where: { classId, studentId: { in: toEnrollIds }, status: 'active' },
         select: { id: true, studentId: true, status: true },
       });
     });
 
-    logger.info('Students enrolled in class', { classId, count: studentIds.length });
+    logger.info('Students enrolled in class', {
+      classId,
+      requested: studentIds.length,
+      created: toCreateIds.length,
+      reactivated: toReactivateIds.length,
+      alreadyActive: alreadyActiveIds.length,
+    });
 
     return {
       enrollments: enrollments.map((e) => ({ id: e.id, studentId: e.studentId, status: e.status })),
-      message: `${studentIds.length} students enrolled successfully`,
+      message: `${toEnrollIds.length} students enrolled successfully`,
     };
   }
 

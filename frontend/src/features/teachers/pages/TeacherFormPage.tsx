@@ -1,4 +1,4 @@
-import { Stack, Title, Paper, Grid, TextInput, Select, Button, Group, Breadcrumbs, Anchor, Text } from '@mantine/core';
+import { Stack, Title, Paper, Grid, TextInput, Select, Button, Group, Breadcrumbs, Anchor, Text, Textarea } from '@mantine/core';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from '@mantine/form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +24,11 @@ export function TeacherFormPage() {
       gender: '' as '' | 'male' | 'female' | 'other',
       phone: '',
       email: '',
+      address: '',
+      qualification: '',
+      specialization: '',
+      hireDate: '',
+      notes: '',
     },
     validate: {
       fullName: (value) => (!value ? t('teachers.messages.requiredName') : null),
@@ -45,6 +50,11 @@ export function TeacherFormPage() {
         gender: t.gender,
         phone: t.phone,
         email: t.email,
+        address: t.address || '',
+        qualification: t.qualification || '',
+        specialization: t.specialization || '',
+        hireDate: t.hireDate ? t.hireDate.split('T')[0] : '',
+        notes: t.notes || '',
       });
       return t;
     },
@@ -119,6 +129,11 @@ export function TeacherFormPage() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label={t('teachers.form.phone')} required {...form.getInputProps('phone')} /></Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label={t('teachers.form.email')} required {...form.getInputProps('email')} /></Grid.Col>
+              <Grid.Col span={12}><TextInput label={t('teachers.form.address')} {...form.getInputProps('address')} /></Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label={t('teachers.form.qualification')} {...form.getInputProps('qualification')} /></Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label={t('teachers.form.specialization')} {...form.getInputProps('specialization')} /></Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label={t('teachers.form.hireDate')} type="date" {...form.getInputProps('hireDate')} /></Grid.Col>
+              <Grid.Col span={12}><Textarea label={t('teachers.form.notes')} minRows={3} {...form.getInputProps('notes')} /></Grid.Col>
             </Grid>
           </Paper>
 

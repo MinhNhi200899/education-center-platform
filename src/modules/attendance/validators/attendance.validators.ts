@@ -49,6 +49,8 @@ export const bulkMarkAttendanceSchema = z.object({
 export const createAttendanceSessionSchema = z.object({
   body: z.object({
     sessionId: z.string().uuid('Invalid session ID'),
+    sessionNote: z.string().max(10000).optional(),
+    attendanceScreenshotUrl: z.string().url('Attendance screenshot is required'),
     defaultStatus: z
       .nativeEnum(AttendanceStatus, {
         errorMap: () => ({ message: 'Status must be: present, absent, late, or excused' }),

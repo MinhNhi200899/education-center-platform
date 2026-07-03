@@ -80,11 +80,16 @@ export function RolesPage() {
       attendance: t('settings.roles.moduleLabels.attendance'),
       evaluations: t('settings.roles.moduleLabels.evaluations'),
       schedule: t('settings.roles.moduleLabels.schedule'),
+      sessions: t('settings.roles.moduleLabels.sessions'),
       tuition: t('settings.roles.moduleLabels.tuition'),
       payments: t('settings.roles.moduleLabels.payments'),
       dashboard: t('settings.roles.moduleLabels.dashboard'),
       reports: t('settings.roles.moduleLabels.reports'),
+      roles: t('settings.roles.moduleLabels.roles'),
+      permissions: t('settings.roles.moduleLabels.permissions'),
+      users: t('settings.roles.moduleLabels.users'),
       settings: t('settings.roles.moduleLabels.settings'),
+      self: t('settings.roles.moduleLabels.self'),
     }),
     [t]
   );

@@ -27,9 +27,9 @@ export const createTeacherSchema = z.object({
     specialization: z.string().max(200).optional(),
     hireDate: z
       .string()
-      .transform((val) => new Date(val))
-      .refine((date) => !isNaN(date.getTime()), 'Invalid date format')
-      .optional(),
+      .optional()
+      .transform((val) => (val ? new Date(val) : undefined))
+      .refine((date) => date === undefined || !isNaN(date.getTime()), 'Invalid date format'),
     salary: z.number().min(0).optional(),
     notes: z.string().max(2000).optional(),
   }),

@@ -1,14 +1,14 @@
-import { useEffect } from 'react';
-import { Stack, Title, Paper, Grid, TextInput, Select, Textarea, Button, Group, Breadcrumbs, Anchor, Text } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Stack, Title, Paper, Grid, TextInput, Select, Textarea, Button, Group, Breadcrumbs, Anchor, Text, Modal, Alert, CopyButton, ActionIcon, Tooltip } from '@mantine/core';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from '@mantine/form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconCheck } from '@tabler/icons-react';
+import { IconArrowLeft, IconCheck, IconCopy, IconInfoCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
-import type { Student } from '@/types';
+import type { CreateStudentResult, Student } from '@/types';
 
 export function StudentFormPage() {
   const { t } = useTranslation();
@@ -17,6 +17,7 @@ export function StudentFormPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isEdit = !!id;
+  const [credentials, setCredentials] = useState<{ loginEmail: string; initialPassword: string } | null>(null);
 
   const form = useForm({
     initialValues: {
@@ -25,6 +26,7 @@ export function StudentFormPage() {
       gender: '' as '' | 'male' | 'female' | 'other',
       phone: '',
       email: '',
+      password: '',
       address: '',
       enrollmentDate: '',
       notes: '',
@@ -35,6 +37,14 @@ export function StudentFormPage() {
       dateOfBirth: (value) => (!value ? t('students.messages.requiredDob') : null),
       gender: (value) => (!value ? t('students.messages.requiredGender') : null),
       enrollmentDate: (value) => (!value ? t('students.messages.requiredEnrollmentDate') : null),
+      email: (value) => {
+        if (!value) return t('students.messages.requiredEmail');
+        return /^\S+@\S+\.\S+$/.test(value) ? null : t('students.messages.invalidEmail');
+      },
+      password: (value) => {
+        if (!value?.trim()) return null;
+        return value.trim().length >= 8 ? null : t('students.messages.passwordMinLength');
+      },
     },
   });
 
@@ -67,21 +77,30 @@ export function StudentFormPage() {
 
   const createMutation = useMutation({
     mutationFn: async (values: typeof form.values) => {
+      const { password, ...rest } = values;
       const payload = {
-        ...values,
-        centerId: values.centerId || user?.centerId,
+        ...rest,
+        centerId: rest.centerId || user?.centerId,
+        ...(password.trim() ? { password: password.trim() } : {}),
       };
       const response = await api.post('/students', payload);
-      return response.data.data;
+      return response.data.data as CreateStudentResult;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      notifications.show({
-        title: t('common.success'),
-        message: t('students.messages.createSuccess'),
-        color: 'green',
-      });
-      navigate('/students');
+      if (data.loginEmail && data.initialPassword) {
+        setCredentials({
+          loginEmail: data.loginEmail,
+          initialPassword: data.initialPassword,
+        });
+      } else {
+        notifications.show({
+          title: t('common.success'),
+          message: t('students.messages.createSuccess'),
+          color: 'green',
+        });
+        navigate('/students');
+      }
     },
     onError: (error: any) => {
       notifications.show({
@@ -183,9 +202,19 @@ export function StudentFormPage() {
                 <TextInput
                   label={t('students.form.email')}
                   placeholder={t('students.form.emailPlaceholder')}
+                  required
                   {...form.getInputProps('email')}
                 />
               </Grid.Col>
+              {!isEdit && (
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <TextInput
+                    label={t('students.form.password')}
+                    placeholder={t('students.form.passwordPlaceholder')}
+                    {...form.getInputProps('password')}
+                  />
+                </Grid.Col>
+              )}
               <Grid.Col span={12}>
                 <TextInput
                   label={t('students.form.address')}
@@ -223,6 +252,64 @@ export function StudentFormPage() {
           </Group>
         </Stack>
       </form>
+
+      <Modal
+        opened={!!credentials}
+        onClose={() => {
+          setCredentials(null);
+          navigate('/students');
+        }}
+        title={t('students.credentials.title')}
+        centered
+      >
+        <Stack gap="md">
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            {t('students.credentials.description')}
+          </Alert>
+          <TextInput
+            label={t('students.form.email')}
+            value={credentials?.loginEmail ?? ''}
+            readOnly
+            rightSection={
+              <CopyButton value={credentials?.loginEmail ?? ''}>
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? t('common.copied') : t('common.copy')}>
+                    <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                      <IconCopy size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            }
+          />
+          <TextInput
+            label={t('students.form.password')}
+            value={credentials?.initialPassword ?? ''}
+            readOnly
+            rightSection={
+              <CopyButton value={credentials?.initialPassword ?? ''}>
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? t('common.copied') : t('common.copy')}>
+                    <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                      <IconCopy size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            }
+          />
+          <Group justify="flex-end">
+            <Button
+              onClick={() => {
+                setCredentials(null);
+                navigate('/students');
+              }}
+            >
+              {t('students.credentials.done')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </>
   );
 }

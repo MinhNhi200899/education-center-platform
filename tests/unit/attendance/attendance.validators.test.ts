@@ -139,9 +139,10 @@ describe('Attendance Validators', () => {
   });
 
   describe('createAttendanceSessionSchema', () => {
-    it('should validate session attendance with defaults', () => {
+    it('should validate session attendance with required screenshot', () => {
       const validData = {
         sessionId: generateId(),
+        attendanceScreenshotUrl: 'https://example.com/screenshot.png',
       };
 
       const result = createAttendanceSessionSchema.safeParse({ body: validData });
@@ -151,6 +152,7 @@ describe('Attendance Validators', () => {
     it('should accept optional defaultStatus', () => {
       const validData = {
         sessionId: generateId(),
+        attendanceScreenshotUrl: 'https://example.com/screenshot.png',
         defaultStatus: AttendanceStatus.present,
       };
 
@@ -161,6 +163,7 @@ describe('Attendance Validators', () => {
     it('should accept optional records', () => {
       const validData = {
         sessionId: generateId(),
+        attendanceScreenshotUrl: 'https://example.com/screenshot.png',
         records: [
           { studentId: generateId(), status: AttendanceStatus.present },
         ],
@@ -168,6 +171,15 @@ describe('Attendance Validators', () => {
 
       const result = createAttendanceSessionSchema.safeParse({ body: validData });
       expect(result.success).toBe(true);
+    });
+
+    it('should reject missing screenshot url', () => {
+      const validData = {
+        sessionId: generateId(),
+      };
+
+      const result = createAttendanceSessionSchema.safeParse({ body: validData });
+      expect(result.success).toBe(false);
     });
   });
 

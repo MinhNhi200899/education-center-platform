@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { paymentService } from './services/payment.service';
+import { fetchVietQRBanks } from '../../shared/services/vietqr-banks.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
 
@@ -416,6 +417,21 @@ export const getPaymentHistory = asyncHandler(
 // ================================
 // VIETQR CONTROLLERS
 // ================================
+
+/**
+ * List VietQR-supported banks (public reference data)
+ * GET /api/v1/payments/vietqr-banks
+ */
+export const getVietQRBanks = asyncHandler(
+  async (_req: Request, res: Response): Promise<void> => {
+    const banks = await fetchVietQRBanks();
+    res.json({
+      success: true,
+      data: banks,
+      meta: { count: banks.length, timestamp: new Date().toISOString() },
+    });
+  }
+);
 
 /**
  * Generate VietQR code

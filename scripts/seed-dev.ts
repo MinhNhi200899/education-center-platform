@@ -221,6 +221,7 @@ async function main() {
         enrollmentDate,
         status: StudentStatus.active,
         notes: 'Demo student account for local testing',
+        loginPassword: DEMO_STUDENT_PASSWORD,
       },
     });
   } else {
@@ -230,6 +231,7 @@ async function main() {
         userId: studentUser.id,
         fullName: 'Nguyen Van Demo',
         status: StudentStatus.active,
+        loginPassword: DEMO_STUDENT_PASSWORD,
       },
     });
   }

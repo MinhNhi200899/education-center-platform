@@ -145,7 +145,12 @@ export function TeacherHomePage() {
             {formatVnd(data?.revenue?.unpaidAmount ?? 0)}
           </Text>
           <Text size="xs" c="dimmed" mt={4}>
-            {data?.revenue?.unpaidInvoiceCount ?? 0} {t('portal.teacher.home.revenuePaid').toLowerCase()}
+            {t('portal.teacher.home.revenueUnpaidHint', {
+              count:
+                data?.revenue?.unpaidStudentCount ??
+                data?.revenue?.unpaidInvoiceCount ??
+                0,
+            })}
           </Text>
         </Paper>
       </SimpleGrid>

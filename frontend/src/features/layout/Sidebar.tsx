@@ -8,7 +8,6 @@ import {
   IconSchool,
   IconCalendar,
   IconCalendarEvent,
-  IconClipboardCheck,
   IconReceipt,
   IconReport,
   IconShield,
@@ -17,12 +16,20 @@ import {
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStudentUser, isTeacherUser } from '@/lib/roles';
+import { FEATURE_EVALUATIONS_UI } from '@/lib/feature-flags';
 
 interface NavItem {
   key: string;
   icon: React.ElementType;
   path: string;
   roles?: string[];
+}
+
+function getActiveNavPath(pathname: string, items: NavItem[]): string | null {
+  const match = items
+    .filter((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  return match?.path ?? null;
 }
 
 const studentNavItems: NavItem[] = [
@@ -36,7 +43,6 @@ const teacherNavItems: NavItem[] = [
   { key: 'nav.mySchedule', icon: IconCalendarEvent, path: '/teacher/schedule' },
   { key: 'nav.myClasses', icon: IconSchool, path: '/teacher/classes' },
   { key: 'nav.attendance', icon: IconCalendar, path: '/attendance' },
-  { key: 'nav.evaluations', icon: IconClipboardCheck, path: '/evaluations' },
   { key: 'nav.payments', icon: IconReceipt, path: '/payments' },
 ];
 
@@ -47,7 +53,6 @@ const navItems: NavItem[] = [
   { key: 'nav.classes', icon: IconSchool, path: '/classes', roles: ['super_admin', 'center_manager'] },
   { key: 'nav.schedule', icon: IconCalendarEvent, path: '/schedule', roles: ['super_admin', 'center_manager'] },
   { key: 'nav.attendance', icon: IconCalendar, path: '/attendance', roles: ['super_admin', 'teacher'] },
-  { key: 'nav.evaluations', icon: IconClipboardCheck, path: '/evaluations', roles: ['super_admin', 'teacher'] },
   { key: 'nav.payments', icon: IconReceipt, path: '/payments', roles: ['super_admin', 'parent', 'teacher'] },
   { key: 'nav.reports', icon: IconReport, path: '/reports', roles: ['super_admin', 'center_manager'] },
 ];
@@ -58,14 +63,17 @@ export function Sidebar() {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const filteredNavItems = isStudentUser(user)
+  const filteredNavItems = (isStudentUser(user)
     ? studentNavItems
     : isTeacherUser(user)
     ? teacherNavItems
     : navItems.filter((item) => {
         if (!item.roles) return true;
         return user?.roles?.some((role) => item.roles?.includes(role));
-      });
+      })
+  ).filter((item) => FEATURE_EVALUATIONS_UI || item.path !== '/evaluations');
+
+  const activePath = getActiveNavPath(location.pathname, filteredNavItems);
 
   return (
     <Stack p="md" gap="xs">
@@ -78,7 +86,7 @@ export function Sidebar() {
           key={item.path}
           label={t(item.key)}
           leftSection={<item.icon size={20} stroke={1.5} />}
-          active={location.pathname === item.path || location.pathname.startsWith(item.path + '/')}
+          active={activePath === item.path}
           onClick={() => navigate(item.path)}
           style={{ borderRadius: 8 }}
         />

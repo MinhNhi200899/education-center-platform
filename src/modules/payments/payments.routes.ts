@@ -44,10 +44,13 @@ import {
   confirmPayment,
   getPaymentHistory,
   generateVietQR,
+  getVietQRBanks,
   reconcilePayments,
 } from './payments.controller';
 
 const router = Router();
+
+router.get('/vietqr-banks', getVietQRBanks);
 
 router.use(authenticate);
 

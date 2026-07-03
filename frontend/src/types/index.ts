@@ -39,6 +39,7 @@ export interface Student {
   enrollmentDate: string;
   status: 'active' | 'inactive' | 'archived';
   notes?: string;
+  loginPassword?: string | null;
   centerId: string;
   center?: {
     id: string;
@@ -55,6 +56,11 @@ export interface Student {
     };
   };
   parents?: Parent[];
+}
+
+export interface CreateStudentResult extends Student {
+  loginEmail?: string;
+  initialPassword?: string;
 }
 
 // Parent
@@ -84,16 +90,23 @@ export interface Teacher {
   notes?: string;
   status: 'active' | 'inactive' | 'terminated';
   avatarUrl?: string;
+  loginPassword?: string | null;
   centerId: string;
   center?: {
     id: string;
     name: string;
     code: string;
   };
-  currentClasses?: Array<{
+  classes?: Array<{
     id: string;
-    name: string;
+    class: {
+      id: string;
+      name: string;
+      academicLevel: string;
+      status: string;
+    };
     role: 'primary' | 'substitute';
+    assignedAt: string;
   }>;
   createdAt: string;
   updatedAt: string;

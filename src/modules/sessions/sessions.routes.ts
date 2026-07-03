@@ -40,8 +40,14 @@ const updateSessionSchema = z.object({
 });
 
 const addMaterialSchema = z.object({
-  driveUrl: z.string().url().max(500),
+  driveUrl: z.string().url().max(500).optional(),
+  fileUrl: z.string().url().max(500).optional(),
   fileName: z.string().max(255).optional(),
+  fileType: z.string().max(100).optional(),
+  fileSize: z.number().int().min(0).optional(),
+  driveFileId: z.string().max(100).optional(),
+}).refine((data) => Boolean(data.driveUrl || data.fileUrl), {
+  message: 'fileUrl or driveUrl is required',
 });
 
 router.post(

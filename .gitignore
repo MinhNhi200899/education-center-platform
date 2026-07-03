@@ -11,6 +11,8 @@ frontend/dist/
 .env.local
 .env.*.local
 .env.test
+secrets/*.json
+!secrets/.gitkeep
 
 # Logs
 logs/
@@ -30,6 +32,10 @@ coverage/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+
+# Local homework uploads (dev fallback)
+storage/homework/
+storage/attendance-screenshots/
 
 # Local accounts (passwords)
 account.md

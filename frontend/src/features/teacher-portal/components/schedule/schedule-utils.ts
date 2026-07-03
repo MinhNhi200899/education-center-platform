@@ -1,5 +1,5 @@
-export const GRID_START_HOUR = 7;
-export const GRID_END_HOUR = 21;
+export const GRID_START_HOUR = 9;
+export const GRID_END_HOUR = 24;
 export const HOUR_HEIGHT_PX = 48;
 export const SLOT_MINUTES = 30;
 
@@ -13,6 +13,7 @@ export interface TeacherScheduleSession {
   classroom?: string | null;
   status: string;
   sessionType?: string;
+  attendanceMarked?: boolean;
 }
 
 export function getMonthStart(date = new Date()): string {
@@ -49,6 +50,15 @@ export function dayOfWeekKey(date: string): string {
 export function isWeekend(date: string): boolean {
   const day = new Date(`${date}T12:00:00`).getDay();
   return day === 0 || day === 6;
+}
+
+export function getTodayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function isToday(date: string): boolean {
+  return date === getTodayIso();
 }
 
 export function addDays(isoDate: string, days: number): string {

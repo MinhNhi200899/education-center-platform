@@ -33,7 +33,7 @@ describe('StudentService', () => {
   // ============================================================
 
   describe('create', () => {
-    it('should create a new student successfully', async () => {
+    it('should create a new student successfully with login credentials', async () => {
       const centerId = generateId();
       const center = createMockCenter({ id: centerId });
 
@@ -54,12 +54,22 @@ describe('StudentService', () => {
 
       mockPrismaClient.center.findUnique.mockResolvedValue(center);
       mockPrismaClient.student.findFirst.mockResolvedValue(null);
-      mockPrismaClient.student.create.mockResolvedValue(createdStudent);
+      mockPrismaClient.user.findUnique.mockResolvedValue(null);
+      mockPrismaClient.role.findUnique.mockResolvedValue({ id: generateId(), name: 'student' });
+      mockPrismaClient.user.create.mockResolvedValue({ id: generateId() });
+      mockPrismaClient.userRole.create.mockResolvedValue({});
+      mockPrismaClient.student.create.mockResolvedValue({
+        ...createdStudent,
+        center: { id: centerId, name: center.name, code: center.code },
+      });
 
       const result = await service.create(studentData);
 
       expect(result.fullName).toBe('John Doe');
+      expect(result.loginEmail).toBe('john@test.com');
+      expect(result.initialPassword).toBeTruthy();
       expect(mockPrismaClient.student.create).toHaveBeenCalledTimes(1);
+      expect(mockPrismaClient.user.create).toHaveBeenCalledTimes(1);
     });
 
     it('should throw NotFoundException when center does not exist', async () => {
@@ -71,6 +81,7 @@ describe('StudentService', () => {
           fullName: 'Test',
           dateOfBirth: new Date(),
           gender: 'male',
+          email: 'test@example.com',
           enrollmentDate: new Date(),
         })
       ).rejects.toThrow(NotFoundException);
@@ -89,6 +100,7 @@ describe('StudentService', () => {
           fullName: 'Existing',
           dateOfBirth: new Date('2010-05-15'),
           gender: 'male',
+          email: 'existing@example.com',
           enrollmentDate: new Date('2024-01-01'),
         })
       ).rejects.toThrow(ConflictException);

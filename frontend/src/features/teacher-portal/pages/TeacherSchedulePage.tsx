@@ -1,5 +1,5 @@
 import { Stack, Title, Text, Group, Button, Paper } from '@mantine/core';
-import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 import {
   DndContext,
   DragEndEvent,
@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { notifications } from '@mantine/notifications';
 import api from '@/lib/api';
 import { MonthlyTimeGrid } from '../components/schedule/MonthlyTimeGrid';
+import { AssignHomeworkModal } from '../components/schedule/AssignHomeworkModal';
+import { MarkAttendanceModal } from '../components/schedule/MarkAttendanceModal';
 import { SessionBlock } from '../components/schedule/SessionBlock';
 import {
   CreateSessionModal,
@@ -31,6 +33,7 @@ import {
   parseSlotId,
   shiftMonth,
 } from '../components/schedule/schedule-utils';
+import { getSessionPhase, canDragSession } from '../components/schedule/session-phase';
 
 export function TeacherSchedulePage() {
   const { t } = useTranslation();
@@ -38,6 +41,8 @@ export function TeacherSchedulePage() {
   const [monthStart, setMonthStart] = useState(() => getMonthStart());
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TeacherScheduleSession | null>(null);
+  const [assignTarget, setAssignTarget] = useState<TeacherScheduleSession | null>(null);
+  const [attendanceTarget, setAttendanceTarget] = useState<TeacherScheduleSession | null>(null);
   const [localSessions, setLocalSessions] = useState<TeacherScheduleSession[]>([]);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [activeSession, setActiveSession] = useState<TeacherScheduleSession | null>(null);
@@ -75,21 +80,39 @@ export function TeacherSchedulePage() {
     queryClient.invalidateQueries({ queryKey: ['teacher-portal-dashboard'] });
   };
 
+  const handleAttendanceSuccess = () => {
+    if (attendanceTarget) {
+      const id = attendanceTarget.id;
+      setLocalSessions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, attendanceMarked: true } : s))
+      );
+    }
+    invalidateSchedule();
+  };
+
   const createMutation = useMutation({
     mutationFn: async (values: CreateSessionFormValues) => {
-      await api.post('/sessions', {
-        classId: values.classId,
-        sessionDate: formatSessionDateForApi(values.sessionDate),
-        startTime: values.startTime,
-        endTime: values.endTime,
-        classroom: values.classroom || undefined,
-        notes: values.notes || undefined,
-      });
+      await Promise.all(
+        values.sessionDates.map((date) =>
+          api.post('/sessions', {
+            classId: values.classId,
+            sessionDate: formatSessionDateForApi(date),
+            startTime: values.startTime,
+            endTime: values.endTime,
+            classroom: values.classroom || undefined,
+            notes: values.notes || undefined,
+          })
+        )
+      );
+      return values.sessionDates.length;
     },
-    onSuccess: () => {
+    onSuccess: (count) => {
       notifications.show({
         title: t('common.success'),
-        message: t('portal.teacher.schedule.create.success'),
+        message:
+          count > 1
+            ? t('portal.teacher.schedule.create.successMultiple', { count })
+            : t('portal.teacher.schedule.create.success'),
         color: 'green',
       });
       setCreateOpen(false);
@@ -166,7 +189,11 @@ export function TeacherSchedulePage() {
 
   const handleDragStart = (event: DragStartEvent) => {
     const session = localSessions.find((s) => s.id === String(event.active.id));
-    setActiveSession(session ?? null);
+    if (!session || !canDragSession(session)) {
+      setActiveSession(null);
+      return;
+    }
+    setActiveSession(session);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -179,7 +206,7 @@ export function TeacherSchedulePage() {
 
     const sessionId = String(active.id);
     const session = localSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    if (!session || !canDragSession(session)) return;
 
     const { sessionDate, startTime, endTime } = computeMoveFromSlot(
       session,
@@ -199,6 +226,16 @@ export function TeacherSchedulePage() {
 
   const handleDragCancel = () => setActiveSession(null);
 
+  const handleSelectSession = (session: TeacherScheduleSession) => {
+    const phase = getSessionPhase(session);
+    if (phase === 'cancelled') return;
+    if (phase === 'in_progress' || phase === 'ended') {
+      setAttendanceTarget(session);
+      return;
+    }
+    setAssignTarget(session);
+  };
+
   const classes = classesData ?? [];
 
   return (
@@ -212,6 +249,9 @@ export function TeacherSchedulePage() {
           <Text size="xs" c="dimmed" mt={4}>
             {t('portal.teacher.schedule.dragHint')}
           </Text>
+          <Text size="xs" c="dimmed">
+            {t('portal.teacher.schedule.clickHint')}
+          </Text>
         </div>
         <Button
           leftSection={<IconPlus size={16} />}
@@ -219,26 +259,6 @@ export function TeacherSchedulePage() {
           disabled={classes.length === 0}
         >
           {t('portal.teacher.schedule.addSession')}
-        </Button>
-      </Group>
-
-      <Group>
-        <Button
-          variant="default"
-          leftSection={<IconChevronLeft size={16} />}
-          onClick={() => setMonthStart(shiftMonth(monthStart, -1))}
-        >
-          {t('portal.teacher.schedule.prevMonth')}
-        </Button>
-        <Button variant="light" onClick={() => setMonthStart(getMonthStart())}>
-          {t('portal.teacher.schedule.thisMonth')}
-        </Button>
-        <Button
-          variant="default"
-          rightSection={<IconChevronRight size={16} />}
-          onClick={() => setMonthStart(shiftMonth(monthStart, 1))}
-        >
-          {t('portal.teacher.schedule.nextMonth')}
         </Button>
       </Group>
 
@@ -259,6 +279,10 @@ export function TeacherSchedulePage() {
               sessions={localSessions}
               savingIds={savingIds}
               onDeleteSession={setDeleteTarget}
+              onSelectSession={handleSelectSession}
+              onPrevMonth={() => setMonthStart(shiftMonth(monthStart, -1))}
+              onNextMonth={() => setMonthStart(shiftMonth(monthStart, 1))}
+              onMonthSelect={setMonthStart}
             />
             <DragOverlay dropAnimation={{ duration: 180 }}>
               {activeSession ? (
@@ -289,6 +313,20 @@ export function TeacherSchedulePage() {
         loading={deleteMutation.isPending}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+      />
+
+      <AssignHomeworkModal
+        session={assignTarget}
+        opened={!!assignTarget}
+        onClose={() => setAssignTarget(null)}
+        onSuccess={invalidateSchedule}
+      />
+
+      <MarkAttendanceModal
+        session={attendanceTarget}
+        opened={!!attendanceTarget}
+        onClose={() => setAttendanceTarget(null)}
+        onSuccess={handleAttendanceSuccess}
       />
     </Stack>
   );

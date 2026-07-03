@@ -1,11 +1,15 @@
-import { PrismaClient, Student, StudentStatus, Gender, EnrollmentStatus } from '@prisma/client';
+import { PrismaClient, Student, StudentStatus, Gender, EnrollmentStatus, UserStatus } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { prisma } from '../../../config/database';
+import { config } from '../../../config';
 import { logger } from '../../../shared/services/logger.service';
+import { generateInitialPassword, isValidStudentPassword } from '../../../shared/utils/password';
 import {
   CreateStudentDTO,
   UpdateStudentDTO,
   StudentFilters,
   StudentResponse,
+  CreateStudentResult,
   ParentDTO,
   ImportResult,
   PaginatedResult,
@@ -17,8 +21,13 @@ export class StudentService {
   /**
    * Create a new student
    */
-  async create(data: CreateStudentDTO): Promise<StudentResponse> {
-    const { centerId, fullName, dateOfBirth, gender, phone, email, address, enrollmentDate, notes } = data;
+  async create(data: CreateStudentDTO): Promise<CreateStudentResult> {
+    const { centerId, fullName, dateOfBirth, gender, phone, email, password, address, enrollmentDate, notes } = data;
+    const loginEmail = email?.trim().toLowerCase();
+
+    if (!loginEmail) {
+      throw new BadRequestException('Email is required to create a student login account', 'EMAIL_REQUIRED');
+    }
 
     // Check center exists
     const center = await prisma.center.findUnique({ where: { id: centerId } });
@@ -42,27 +51,69 @@ export class StudentService {
       );
     }
 
-    const student = await prisma.student.create({
-      data: {
-        centerId,
-        fullName,
-        dateOfBirth: new Date(dateOfBirth),
-        gender,
-        phone: phone || null,
-        email: email || null,
-        address: address || null,
-        enrollmentDate: new Date(enrollmentDate),
-        notes: notes || null,
-        status: StudentStatus.active,
-      },
-      include: {
-        center: { select: { id: true, name: true, code: true } },
-      },
+    const existingUser = await prisma.user.findUnique({ where: { email: loginEmail } });
+    if (existingUser) {
+      throw new ConflictException('Email already registered', 'EMAIL_EXISTS');
+    }
+
+    const studentRole = await prisma.role.findUnique({ where: { name: 'student' } });
+    if (!studentRole) {
+      throw new BadRequestException('Student role is not configured', 'STUDENT_ROLE_MISSING');
+    }
+
+    const initialPassword = password?.trim() || generateInitialPassword(8);
+    if (!isValidStudentPassword(initialPassword)) {
+      throw new BadRequestException('Password must be at least 8 characters', 'INVALID_PASSWORD');
+    }
+    const passwordHash = await bcrypt.hash(initialPassword, config.bcrypt.saltRounds);
+
+    const student = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: loginEmail,
+          passwordHash,
+          phone: phone || null,
+          centerId,
+          status: UserStatus.active,
+        },
+      });
+
+      await tx.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: studentRole.id,
+          centerId,
+        },
+      });
+
+      return tx.student.create({
+        data: {
+          userId: user.id,
+          centerId,
+          fullName,
+          dateOfBirth: new Date(dateOfBirth),
+          gender,
+          phone: phone || null,
+          email: loginEmail,
+          address: address || null,
+          enrollmentDate: new Date(enrollmentDate),
+          notes: notes || null,
+          loginPassword: initialPassword,
+          status: StudentStatus.active,
+        },
+        include: {
+          center: { select: { id: true, name: true, code: true } },
+        },
+      });
     });
 
-    logger.info('Student created', { studentId: student.id, centerId });
+    logger.info('Student created', { studentId: student.id, centerId, loginEmail });
 
-    return this.formatStudent(student);
+    return {
+      ...this.formatStudent(student),
+      loginEmail,
+      initialPassword,
+    };
   }
 
   /**
@@ -506,6 +557,7 @@ export class StudentService {
       enrollmentDate: student.enrollmentDate,
       status: student.status,
       notes: student.notes,
+      loginPassword: student.loginPassword ?? null,
       centerId: student.centerId,
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,

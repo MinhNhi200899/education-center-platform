@@ -250,6 +250,9 @@ export interface VietQRRequest {
   invoiceId: string;
   amount?: number;
   description?: string;
+  bankCode?: string;
+  bankAccount?: string;
+  receiverName?: string;
 }
 
 export interface VietQRResponse {

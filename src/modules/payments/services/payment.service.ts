@@ -1030,6 +1030,107 @@ export class PaymentService {
   }
 
   /**
+   * Record and complete a bank transfer in one step (webhook or manual confirm).
+   * Idempotent when transactionId is provided.
+   */
+  async completeExternalBankPayment(params: {
+    invoiceId: string;
+    amount: number;
+    paymentMethod?: 'bank_transfer' | 'vietqr';
+    transactionId: string;
+    transactionDate?: Date;
+    bankCode?: string;
+    confirmedBy?: string | null;
+  }): Promise<{ invoice: InvoiceResponse; payment: PaymentResponse; alreadyProcessed: boolean }> {
+    const existing = await prisma.payment.findFirst({
+      where: { transactionId: params.transactionId },
+      include: {
+        invoice: { select: { id: true, invoiceNumber: true } },
+        confirmedByUser: { select: { id: true, email: true } },
+      },
+    });
+    if (existing) {
+      return {
+        invoice: await this.getInvoiceById(existing.invoiceId),
+        payment: this.formatPayment(existing),
+        alreadyProcessed: true,
+      };
+    }
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: params.invoiceId },
+      include: { payments: true },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice');
+    }
+
+    if (invoice.status === 'cancelled') {
+      throw new BadRequestException('Cannot record payment for cancelled invoice');
+    }
+
+    if (invoice.status === 'paid') {
+      const lastPayment = invoice.payments
+        .filter((p) => p.status === 'completed')
+        .sort((a, b) => b.transactionDate.getTime() - a.transactionDate.getTime())[0];
+      if (lastPayment) {
+        return {
+          invoice: await this.getInvoiceById(params.invoiceId),
+          payment: this.formatPayment(lastPayment),
+          alreadyProcessed: true,
+        };
+      }
+    }
+
+    const totalPaid = invoice.payments
+      .filter((p) => p.status === 'completed')
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+    const remainingAmount = Number(invoice.totalAmount) - totalPaid;
+
+    if (params.amount > remainingAmount) {
+      throw new BadRequestException(
+        `Payment amount (${params.amount}) exceeds remaining balance (${remainingAmount})`
+      );
+    }
+
+    const transactionDate = params.transactionDate ?? new Date();
+    const confirmedBy = params.confirmedBy ?? null;
+
+    const payment = await prisma.payment.create({
+      data: {
+        invoiceId: params.invoiceId,
+        amount: params.amount,
+        paymentMethod: (params.paymentMethod ?? 'bank_transfer') as PaymentMethod,
+        transactionId: params.transactionId,
+        transactionDate,
+        bankCode: params.bankCode ?? null,
+        status: 'completed',
+        confirmedBy,
+        confirmedAt: new Date(),
+      },
+      include: {
+        invoice: { select: { id: true, invoiceNumber: true } },
+        confirmedByUser: { select: { id: true, email: true } },
+      },
+    });
+
+    await this.updateInvoicePaymentStatus(params.invoiceId);
+
+    logger.info('External bank payment completed', {
+      paymentId: payment.id,
+      invoiceId: params.invoiceId,
+      transactionId: params.transactionId,
+    });
+
+    return {
+      invoice: await this.getInvoiceById(params.invoiceId),
+      payment: this.formatPayment(payment),
+      alreadyProcessed: false,
+    };
+  }
+
+  /**
    * Get payment by ID
    */
   async getPaymentById(id: string): Promise<PaymentResponse> {
@@ -1169,14 +1270,23 @@ export class PaymentService {
     const outstanding = Number(invoice.totalAmount) - totalPaid;
     const amount = data.amount || outstanding;
 
-    // Get bank details from center settings or use default
+    // Get bank details: override > center settings > default
     const centerSettings = invoice.center.settings as any || {};
     const bankAccount =
-      centerSettings.accountNo || centerSettings.vietqrBankAccount || '123456789';
+      data.bankAccount ||
+      centerSettings.accountNo ||
+      centerSettings.vietqrBankAccount ||
+      '123456789';
     const bankCode =
-      centerSettings.vietqrBankId || centerSettings.vietqrBankCode || 'VCB';
+      data.bankCode ||
+      centerSettings.vietqrBankId ||
+      centerSettings.vietqrBankCode ||
+      'VCB';
     const receiverName =
-      centerSettings.accountName || centerSettings.vietqrAccountName || invoice.center.name;
+      data.receiverName ||
+      centerSettings.accountName ||
+      centerSettings.vietqrAccountName ||
+      invoice.center.name;
     const receiverBank = this.getBankName(bankCode);
 
     // Generate QR code URL (in production, this would call VietQR API)

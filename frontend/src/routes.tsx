@@ -31,12 +31,13 @@ import { AttendancePage } from '@/features/attendance/pages/AttendancePage';
 import { AttendanceMonthlyPage } from '@/features/attendance/pages/AttendanceMonthlyPage';
 import { AttendanceListPage } from '@/features/attendance/pages/AttendanceListPage';
 
-// Evaluations
+// Evaluations (hidden via FEATURE_EVALUATIONS_UI)
 import { EvaluationListPage } from '@/features/evaluations/pages/EvaluationListPage';
 import { EvaluationFormPage } from '@/features/evaluations/pages/EvaluationFormPage';
+import { FEATURE_EVALUATIONS_UI } from '@/lib/feature-flags';
 
 // Payments
-import { InvoiceListPage } from '@/features/payments/pages/InvoiceListPage';
+import { PaymentsIndexPage } from '@/features/payments/pages/PaymentsIndexPage';
 import { PaymentPage } from '@/features/payments/pages/PaymentPage';
 
 // Reports
@@ -244,18 +245,20 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // Evaluations
-          {
-            path: 'evaluations',
-            element: (
-              <RoleRoute roles={['super_admin', 'teacher']} />
-            ),
-            children: [
-              { index: true, element: <EvaluationListPage /> },
-              { path: 'new', element: <EvaluationFormPage /> },
-              { path: ':id', element: <EvaluationFormPage /> },
-            ],
-          },
+          // Evaluations (disabled when FEATURE_EVALUATIONS_UI is false)
+          ...(FEATURE_EVALUATIONS_UI
+            ? [
+                {
+                  path: 'evaluations',
+                  element: <RoleRoute roles={['super_admin', 'teacher']} />,
+                  children: [
+                    { index: true, element: <EvaluationListPage /> },
+                    { path: 'new', element: <EvaluationFormPage /> },
+                    { path: ':id', element: <EvaluationFormPage /> },
+                  ],
+                },
+              ]
+            : [{ path: 'evaluations/*', element: <HomeRedirect /> }]),
 
           // Payments & Tuition
           {
@@ -264,7 +267,7 @@ export const router = createBrowserRouter([
               <RoleRoute roles={['super_admin', 'parent', 'teacher']} />
             ),
             children: [
-              { index: true, element: <InvoiceListPage /> },
+              { index: true, element: <PaymentsIndexPage /> },
               { path: 'invoice/:id', element: <PaymentPage /> },
             ],
           },

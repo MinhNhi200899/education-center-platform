@@ -57,6 +57,7 @@ export interface TeacherResponse {
   status: TeacherStatus;
   avatarUrl: string | null;
   notes: string | null;
+  loginPassword?: string | null;
   centerId: string;
   center?: {
     id: string;

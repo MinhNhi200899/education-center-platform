@@ -82,7 +82,7 @@ export function StudentDetailPage() {
         )}
 
         <Grid>
-          <Grid.Col span={{ base: 12, md: 8 }}>
+          <Grid.Col span={{ base: 12, md: 12 }}>
             <Stack gap="md">
               {/* Personal Info */}
               <Paper shadow="sm" p="lg" radius="md">
@@ -114,6 +114,10 @@ export function StudentDetailPage() {
                     <Text size="sm" c="dimmed">{t('students.detail.email')}</Text>
                     <Text fw={500}>{student.email || '-'}</Text>
                   </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" c="dimmed">{t('students.form.password')}</Text>
+                    <Text fw={500} ff="monospace">{student.loginPassword || '-'}</Text>
+                  </Grid.Col>
                   <Grid.Col span={12}>
                     <Text size="sm" c="dimmed">{t('students.detail.address')}</Text>
                     <Text fw={500}>{student.address || '-'}</Text>
@@ -138,20 +142,7 @@ export function StudentDetailPage() {
             </Stack>
           </Grid.Col>
 
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Stack gap="md">
-              <Paper shadow="sm" p="lg" radius="md">
-                <Title order={4} mb="md">{t('students.detail.parents')}</Title>
-                {student.parents?.map((parent) => (
-                  <Stack key={parent.id} gap="xs">
-                    <Text fw={500}>{parent.fullName}</Text>
-                    <Text size="sm" c="dimmed">{parent.relationship}</Text>
-                    <Text size="sm">{parent.phone}</Text>
-                  </Stack>
-                )) || <Text c="dimmed">{t('students.detail.noParents')}</Text>}
-              </Paper>
-            </Stack>
-          </Grid.Col>
+       
         </Grid>
       </Stack>
     </>

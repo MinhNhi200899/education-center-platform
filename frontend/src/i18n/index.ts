@@ -12,9 +12,9 @@ import vi from './locales/vi.json';
 
 export const supportedLngs = ['vi', 'en'] as const;
 export type SupportedLng = (typeof supportedLngs)[number];
+const savedLocale = localStorage.getItem('app.locale') || 'vi';
 
 void i18n
-  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources: {
@@ -22,7 +22,7 @@ void i18n
       vi: { translation: vi },
     },
     fallbackLng: 'vi',
-    lng: 'vi', // default; LanguageDetector will override if a saved preference exists
+    lng: savedLocale, // default; LanguageDetector will override if a saved preference exists
     supportedLngs: supportedLngs as unknown as string[],
     interpolation: {
       escapeValue: false, // React already escapes
@@ -42,5 +42,10 @@ const applyDayjsLocale = (lng: string) => {
 };
 applyDayjsLocale(i18n.language || 'vi');
 i18n.on('languageChanged', applyDayjsLocale);
+
+
+i18n.on('languageChanged', (lng) => {
+  localStorage.setItem('app.locale', lng);
+});
 
 export default i18n;

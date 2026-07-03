@@ -25,6 +25,7 @@ import {
   MonthlyBulkAttendanceDTO,
 } from '../types/attendance.types';
 import { NotFoundException, BadRequestException } from '../../../shared/types/error.types';
+import { assertSessionAllowsAttendance } from '../../../shared/utils/session-timing';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { scheduleService } from '../../classes/services/schedule.service';
 
@@ -58,6 +59,8 @@ export class AttendanceService {
     if (!session) {
       throw new NotFoundException('Session');
     }
+
+    assertSessionAllowsAttendance(session);
 
     // Verify student is enrolled in the class
     const enrollment = await this.prisma.enrollment.findUnique({
@@ -161,6 +164,8 @@ export class AttendanceService {
       throw new NotFoundException('Session');
     }
 
+    assertSessionAllowsAttendance(session);
+
     const results = { marked: 0, updated: 0, absentStudents: [] as string[] };
 
     // Process each record
@@ -232,7 +237,7 @@ export class AttendanceService {
     data: CreateAttendanceSessionDTO,
     recordedBy: string
   ): Promise<MarkAttendanceResult> {
-    const { sessionId, defaultStatus = AttendanceStatus.present, records } = data;
+    const { sessionId, sessionNote, attendanceScreenshotUrl, defaultStatus = AttendanceStatus.present, records } = data;
 
     // Verify session exists and get enrollments
     const session = await this.prisma.session.findUnique({
@@ -257,13 +262,20 @@ export class AttendanceService {
       throw new NotFoundException('Session');
     }
 
-    const enrolledStudents = session.class.enrollments;
-    const results = { marked: 0, updated: 0, absentStudents: [] as string[] };
+    assertSessionAllowsAttendance(session);
 
-    // Get existing attendance records for this session
     const existingRecords = await this.prisma.attendanceRecord.findMany({
       where: { sessionId },
     });
+
+    if (existingRecords.length > 0) {
+      throw new BadRequestException(
+        'Attendance has already been recorded for this session and cannot be changed'
+      );
+    }
+
+    const enrolledStudents = session.class.enrollments;
+    const results = { marked: 0, updated: 0, absentStudents: [] as string[] };
 
     const existingMap = new Map(
       existingRecords.map((record) => [record.studentId, record])
@@ -276,34 +288,27 @@ export class AttendanceService {
       // Check if there's a specific record for this student
       const specificRecord = records?.find((r) => r.studentId === studentId);
       const status = specificRecord?.status || defaultStatus;
-      const reason = specificRecord?.reason;
+      const reason = specificRecord?.reason?.trim() || undefined;
 
       const existing = existingMap.get(studentId);
 
       if (existing) {
-        await this.prisma.attendanceRecord.update({
-          where: { id: existing.id },
-          data: {
-            status,
-            reason: this.shouldStoreReason(status) ? reason : null,
-            recordedBy,
-            recordedAt: new Date(),
-          },
-        });
-        results.updated++;
-      } else {
-        await this.prisma.attendanceRecord.create({
-          data: {
-            studentId,
-            sessionId,
-            status,
-            reason: this.shouldStoreReason(status) ? reason : null,
-            recordedBy,
-            recordedAt: new Date(),
-          },
-        });
-        results.marked++;
+        throw new BadRequestException(
+          'Attendance has already been recorded for this session and cannot be changed'
+        );
       }
+
+      await this.prisma.attendanceRecord.create({
+        data: {
+          studentId,
+          sessionId,
+          status,
+          reason: reason ?? null,
+          recordedBy,
+          recordedAt: new Date(),
+        },
+      });
+      results.marked++;
 
       // Track absent/late students
       if (status === AttendanceStatus.absent || status === AttendanceStatus.late) {
@@ -311,11 +316,25 @@ export class AttendanceService {
       }
     }
 
-    // Update session status
+    // Update session status, screenshot, and optional attendance note
+    const sessionUpdate: {
+      status?: SessionStatus;
+      notes?: string;
+      attendanceScreenshotUrl?: string;
+    } = {};
     if (session.status === SessionStatus.scheduled) {
+      sessionUpdate.status = SessionStatus.completed;
+    }
+    if (sessionNote?.trim()) {
+      sessionUpdate.notes = sessionNote.trim();
+    }
+    if (attendanceScreenshotUrl?.trim()) {
+      sessionUpdate.attendanceScreenshotUrl = attendanceScreenshotUrl.trim();
+    }
+    if (Object.keys(sessionUpdate).length > 0) {
       await this.prisma.session.update({
         where: { id: sessionId },
-        data: { status: SessionStatus.completed },
+        data: sessionUpdate,
       });
     }
 

@@ -11,11 +11,18 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token (skip for login/refresh)
 api.interceptors.request.use((config) => {
+  // Skip auth header for login/refresh endpoints to avoid token conflicts
+  if (config.url?.includes('/auth/login') || config.url?.includes('/auth/refresh')) {
+    return config;
+  }
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 });

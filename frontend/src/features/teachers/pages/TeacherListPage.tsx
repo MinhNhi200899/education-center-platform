@@ -6,6 +6,7 @@ import {
   Group,
   Button,
   TextInput,
+  Select,
   Table,
   Badge,
   ActionIcon,
@@ -13,6 +14,8 @@ import {
   Paper,
   Text,
   Pagination,
+  CopyButton,
+  Tooltip,
 } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -22,6 +25,7 @@ import {
   IconPencil,
   IconTrash,
   IconEye,
+  IconCopy,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -32,6 +36,7 @@ export function TeacherListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState('');
 
   const STATUS_COLORS = useMemo(
@@ -44,17 +49,22 @@ export function TeacherListPage() {
   );
 
   const { data, isLoading } = useQuery({
-    queryKey: ['teachers', page, search],
+    queryKey: ['teachers', page, limit, search],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '20',
+        limit: limit.toString(),
         ...(search && { search }),
       });
       const response = await api.get(`/teachers?${params}`);
       return response.data as PaginatedResult<Teacher>;
     },
   });
+
+  const limitOptions = [20, 50, 100].map((v) => ({
+    value: String(v),
+    label: `${v}/${t('teachers.list.perPage')}`,
+  }));
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/teachers/${id}`),
@@ -77,19 +87,36 @@ export function TeacherListPage() {
       </Group>
 
       <Paper shadow="sm" p="md" radius="md">
-        <TextInput
-          placeholder={t('teachers.list.searchPlaceholder')}
-          leftSection={<IconSearch size={16} />}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          mb="md"
-        />
+        <Group mb="md" align="flex-end">
+          <TextInput
+            placeholder={t('teachers.list.searchPlaceholder')}
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            style={{ flex: 1 }}
+          />
+          <Select
+            label={t('teachers.list.perPage')}
+            data={limitOptions}
+            value={String(limit)}
+            onChange={(v) => {
+              setLimit(parseInt(v || '20', 10));
+              setPage(1);
+            }}
+            w={160}
+          />
+        </Group>
 
-        <Table striped highlightOnHover>
-          <Table.Thead>
+        <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+        <Table striped highlightOnHover horizontalSpacing="md" verticalSpacing="sm">
+          <Table.Thead style={{ background: 'var(--mantine-color-gray-0)' }}>
             <Table.Tr>
               <Table.Th>{t('teachers.list.table.name')}</Table.Th>
               <Table.Th>{t('teachers.list.table.email')}</Table.Th>
+              <Table.Th>{t('teachers.list.table.password')}</Table.Th>
               <Table.Th>{t('teachers.list.table.phone')}</Table.Th>
               <Table.Th>{t('teachers.list.table.specialization')}</Table.Th>
               <Table.Th>{t('teachers.list.table.status')}</Table.Th>
@@ -100,9 +127,35 @@ export function TeacherListPage() {
             {data?.data.map((teacher) => (
               <Table.Tr key={teacher.id}>
                 <Table.Td>
-                  <Text fw={500}>{teacher.fullName}</Text>
+                  <Text
+                    fw={500}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/teachers/${teacher.id}`)}
+                  >
+                    {teacher.fullName}
+                  </Text>
                 </Table.Td>
                 <Table.Td>{teacher.email}</Table.Td>
+                <Table.Td>
+                  {teacher.loginPassword ? (
+                    <Group gap={4} wrap="nowrap">
+                      <Text ff="monospace" size="sm">
+                        {teacher.loginPassword}
+                      </Text>
+                      <CopyButton value={teacher.loginPassword}>
+                        {({ copied, copy }) => (
+                          <Tooltip label={copied ? t('common.copied') : t('common.copy')}>
+                            <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} size="sm" onClick={copy}>
+                              <IconCopy size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </CopyButton>
+                    </Group>
+                  ) : (
+                    '-'
+                  )}
+                </Table.Td>
                 <Table.Td>{teacher.phone}</Table.Td>
                 <Table.Td>{teacher.specialization || '-'}</Table.Td>
                 <Table.Td>
@@ -135,6 +188,7 @@ export function TeacherListPage() {
             ))}
           </Table.Tbody>
         </Table>
+        </Paper>
 
         {data?.data.length === 0 && !isLoading && (
           <Stack align="center" py="xl">

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { app } from './app';
 import { config } from './config';
 import { connectDatabase, disconnectDatabase } from './config/database';
@@ -11,13 +12,6 @@ async function startServer(): Promise<void> {
     // Connect to database
     await connectDatabase();
 
-    // Ensure system roles have required permissions (fixes production RBAC drift)
-    try {
-      await rbacService.syncSystemRolePermissions();
-    } catch (syncError) {
-      logger.warn('RBAC sync on startup failed (server will still start)', { syncError });
-    }
-
     // Start HTTP server
     const server = app.listen(PORT, () => {
       logger.info(`Server started on port ${PORT}`, {
@@ -25,6 +19,14 @@ async function startServer(): Promise<void> {
         port: PORT,
       });
     });
+
+    // Ensure system roles have required permissions (fixes production RBAC drift)
+    // Run after server starts so a slow DB sync can't block boot.
+    Promise.resolve()
+      .then(() => rbacService.syncSystemRolePermissions())
+      .catch((syncError) => {
+        logger.warn('RBAC sync on startup failed (server will still start)', { syncError });
+      });
 
     // Graceful shutdown
     const shutdown = async (signal: string) => {

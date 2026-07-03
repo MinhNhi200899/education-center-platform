@@ -1,6 +1,10 @@
 import { prisma } from '../../config/database';
 import { paymentService } from '../payments/services/payment.service';
 import { logger } from '../../shared/services/logger.service';
+import {
+  buildSepayQrImageUrl,
+  normalizeSepayPaymentCode,
+} from '../../shared/services/sepay-qr.service';
 
 export interface SepayWebhookPayload {
   id: number;
@@ -26,11 +30,32 @@ function normalizeVietnameseText(text: string): string {
     .trim();
 }
 
-function contentMatchesStudent(
+function contentMatchesInvoice(
   rawContent: string,
+  invoiceNumber: string,
   studentName: string,
-  invoiceNumber: string
+  sepayCode?: string | null
 ): boolean {
+  if (sepayCode) {
+    const codeNorm = normalizeSepayPaymentCode(sepayCode).toUpperCase();
+    const invNorm = normalizeSepayPaymentCode(invoiceNumber).toUpperCase();
+    if (codeNorm && invNorm && codeNorm === invNorm) {
+      return true;
+    }
+    if (rawContent.toUpperCase().includes(sepayCode.toUpperCase())) {
+      return true;
+    }
+  }
+
+  const invNorm = normalizeSepayPaymentCode(invoiceNumber);
+  if (invNorm && rawContent.toUpperCase().includes(invNorm.toUpperCase())) {
+    return true;
+  }
+
+  if (invoiceNumber && rawContent.toUpperCase().includes(invoiceNumber.toUpperCase())) {
+    return true;
+  }
+
   const content = normalizeVietnameseText(rawContent);
   const name = normalizeVietnameseText(studentName);
 
@@ -40,10 +65,6 @@ function contentMatchesStudent(
 
   const parts = name.split(/\s+/).filter((p) => p.length >= 2);
   if (parts.length > 0 && parts.every((p) => content.includes(p))) {
-    return true;
-  }
-
-  if (invoiceNumber && rawContent.toUpperCase().includes(invoiceNumber.toUpperCase())) {
     return true;
   }
 
@@ -146,7 +167,12 @@ export class SepayWebhookService {
     });
 
     const matched = candidates.filter((inv) =>
-      contentMatchesStudent(transferContent, inv.student.fullName, inv.invoiceNumber)
+      contentMatchesInvoice(
+        transferContent,
+        inv.invoiceNumber,
+        inv.student.fullName,
+        payload.code
+      )
     );
 
     if (matched.length === 0) {

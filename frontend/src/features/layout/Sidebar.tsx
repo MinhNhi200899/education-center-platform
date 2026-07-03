@@ -43,7 +43,7 @@ const teacherNavItems: NavItem[] = [
   { key: 'nav.mySchedule', icon: IconCalendarEvent, path: '/teacher/schedule' },
   { key: 'nav.myClasses', icon: IconSchool, path: '/teacher/classes' },
   { key: 'nav.attendance', icon: IconCalendar, path: '/attendance' },
-  { key: 'nav.payments', icon: IconReceipt, path: '/payments' },
+  { key: 'nav.sepayAccount', icon: IconReceipt, path: '/payments' },
 ];
 
 const navItems: NavItem[] = [

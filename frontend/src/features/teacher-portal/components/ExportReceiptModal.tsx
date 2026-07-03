@@ -183,7 +183,7 @@ export function ExportReceiptModal({
             <Paper withBorder p="md" radius="md">
               <Stack align="center" gap="sm">
                 <Text fw={600}>{t('payments.payment.vietqrTitle')}</Text>
-                <Image src={data.vietqr.qrCodeUrl} alt="VietQR" w={220} radius="md" />
+                <Image src={data.vietqr.qrCodeUrl} alt="SePay QR" w={220} radius="md" />
                 <Text size="sm" ta="center">
                   {data.vietqr.receiverName} · {data.vietqr.receiverBank}
                 </Text>

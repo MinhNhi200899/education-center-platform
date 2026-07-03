@@ -30,9 +30,21 @@ interface TeacherPaymentSettings {
   usingCenterDefaults?: boolean;
 }
 
-function buildVietQrPreviewUrl(bankCode: string, accountNo: string): string | null {
+function buildSepayQrPreviewUrl(
+  bankCode: string,
+  accountNo: string,
+  accountName?: string
+): string | null {
   if (!bankCode || !accountNo.trim()) return null;
-  return `https://img.vietqr.io/image/${bankCode}-${accountNo.trim()}-compact.png`;
+  const qs = new URLSearchParams({
+    acc: accountNo.trim(),
+    bank: bankCode,
+    template: 'compact',
+  });
+  if (accountName?.trim()) {
+    qs.set('holder', accountName.trim());
+  }
+  return `https://qr.sepay.vn/img?${qs.toString()}`;
 }
 
 export function TeacherPaymentSettingsPage() {
@@ -93,7 +105,11 @@ export function TeacherPaymentSettingsPage() {
     },
   });
 
-  const previewUrl = buildVietQrPreviewUrl(form.values.vietqrBankId, form.values.accountNo);
+  const previewUrl = buildSepayQrPreviewUrl(
+    form.values.vietqrBankId,
+    form.values.accountNo,
+    form.values.accountName
+  );
 
   return (
     <Stack gap="lg">
@@ -156,7 +172,7 @@ export function TeacherPaymentSettingsPage() {
             <Text size="sm" c="dimmed" ta="center">
               {form.values.accountName} · {form.values.accountNo}
             </Text>
-            <Image src={previewUrl} alt="VietQR" w={220} radius="md" />
+            <Image src={previewUrl} alt="SePay QR" w={220} radius="md" />
             <Text size="xs" c="dimmed" ta="center">
               {t('portal.teacher.payments.qrHint')}
             </Text>

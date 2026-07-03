@@ -1129,7 +1129,7 @@ export class TeacherPortalService {
     const { bankAccount, bankCode, receiverName } = await this.resolveTeacherBankProfile(userId);
     if (!bankAccount || !bankCode) {
       throw new BadRequestException(
-        'Chưa cấu hình tài khoản ngân hàng VietQR. Vui lòng vào Phiếu thu để cấu hình.'
+        'Chưa cấu hình tài khoản ngân hàng SePay. Vui lòng vào Tài khoản & thu phí để cấu hình.'
       );
     }
 
@@ -1141,7 +1141,7 @@ export class TeacherPortalService {
       vietqr = await paymentService.generateVietQR({
         invoiceId: invoice.id,
         amount: Number(invoice.totalAmount),
-        description: `${enrollment.student.fullName} * ${sessionsAttended}`,
+        description: invoice.invoiceNumber,
         bankCode,
         bankAccount,
         receiverName,
@@ -1188,14 +1188,32 @@ export class TeacherPortalService {
       select: { userId: true },
     });
 
+    const amountFormatted = new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(receipt.calculatedTuition);
+
+    const qr = receipt.vietqr;
+    const transferMessage = qr
+      ? `Phiếu ${receipt.invoice.invoiceNumber}: ${amountFormatted}.\n` +
+        `Chuyển khoản ${qr.receiverBank} STK ${qr.receiverAccount} (${qr.receiverName}).\n` +
+        `Nội dung CK: ${qr.description}\n` +
+        `Quét mã QR SePay trong phiếu thu hoặc nhập đúng nội dung khi chuyển.`
+      : share.messageTemplate;
+
     if (student?.userId) {
       await prisma.notification.create({
         data: {
           userId: student.userId,
           type: 'tuition_invoice',
           title: 'Phiếu thu học phí',
-          message: share.messageTemplate,
-          data: share.payload as object,
+          message: transferMessage,
+          data: {
+            ...(share.payload as object),
+            qrCodeUrl: qr?.qrCodeUrl ?? null,
+            paymentCode: qr?.description ?? receipt.invoice.invoiceNumber,
+          },
         },
       });
     }
@@ -1204,7 +1222,7 @@ export class TeacherPortalService {
       ...receipt,
       share: {
         success: share.success,
-        messageTemplate: share.messageTemplate,
+        messageTemplate: transferMessage,
         note: share.note,
       },
     };

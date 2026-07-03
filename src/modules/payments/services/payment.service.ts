@@ -2,6 +2,10 @@ import { PrismaClient, BillingCycle, InvoiceStatus, PaymentMethod, PaymentMethod
 import { prisma } from '../../../config/database';
 import { logger } from '../../../shared/services/logger.service';
 import {
+  buildSepayQrImageUrl,
+  normalizeSepayPaymentCode,
+} from '../../../shared/services/sepay-qr.service';
+import {
   CreateTuitionPlanDTO,
   UpdateTuitionPlanDTO,
   TuitionPlanFilters,
@@ -1247,7 +1251,7 @@ export class PaymentService {
   // ================================
 
   /**
-   * Generate VietQR code for an invoice
+   * Generate SePay QR image URL for an invoice (qr.sepay.vn).
    */
   async generateVietQR(data: VietQRRequest): Promise<VietQRResponse> {
     const invoice = await prisma.invoice.findUnique({
@@ -1289,9 +1293,19 @@ export class PaymentService {
       invoice.center.name;
     const receiverBank = this.getBankName(bankCode);
 
-    // Generate QR code URL (in production, this would call VietQR API)
-    const description = data.description || `Thanh toán ${invoice.invoiceNumber}`;
-    const qrCodeUrl = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact.png?amount=${amount}&addInfo=${encodeURIComponent(description)}`;
+    const paymentCode =
+      data.description && !data.description.includes(' ')
+        ? normalizeSepayPaymentCode(data.description)
+        : normalizeSepayPaymentCode(invoice.invoiceNumber);
+    const description = paymentCode || invoice.invoiceNumber;
+
+    const qrCodeUrl = buildSepayQrImageUrl({
+      accountNo: bankAccount,
+      bank: bankCode,
+      amount,
+      paymentCode: description,
+      holder: receiverName,
+    });
 
     return {
       qrCode: qrCodeUrl,

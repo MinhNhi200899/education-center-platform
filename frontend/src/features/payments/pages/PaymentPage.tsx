@@ -242,7 +242,7 @@ export function PaymentPage() {
                 <Title order={4}>{t('payments.payment.vietqrTitle')}</Title>
               </Group>
               <Stack align="center" gap="sm">
-                <Image src={vietqr.qrCodeUrl} alt="VietQR" w={200} radius="md" />
+                <Image src={vietqr.qrCodeUrl} alt="SePay QR" w={200} radius="md" />
                 <Text size="sm" c="dimmed" ta="center">
                   {vietqr.receiverName} · {vietqr.receiverBank}
                 </Text>

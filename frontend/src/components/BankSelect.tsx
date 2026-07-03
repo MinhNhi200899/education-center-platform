@@ -18,9 +18,9 @@ interface BankSelectOption {
   logo: string;
 }
 
-type Props = Omit<SelectProps, 'data' | 'renderOption'> & {
-  value: string;
-  onChange: (value: string | null) => void;
+type Props = Omit<SelectProps, 'data' | 'renderOption' | 'value' | 'onChange'> & {
+  value?: string;
+  onChange?: (value: string | null) => void;
 };
 
 function BankLogo({ src, size = 22 }: { src: string; size?: number }) {
@@ -37,7 +37,7 @@ function BankLogo({ src, size = 22 }: { src: string; size?: number }) {
   );
 }
 
-export function BankSelect({ value, onChange, label, placeholder, ...rest }: Props) {
+export function BankSelect({ value = '', onChange, label, placeholder, ...rest }: Props) {
   const { t } = useTranslation();
 
   const { data: banks, isLoading } = useQuery({

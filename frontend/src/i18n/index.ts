@@ -1,6 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import 'dayjs/locale/en';
@@ -22,7 +21,7 @@ void i18n
       vi: { translation: vi },
     },
     fallbackLng: 'vi',
-    lng: savedLocale, // default; LanguageDetector will override if a saved preference exists
+    lng: savedLocale,
     supportedLngs: supportedLngs as unknown as string[],
     interpolation: {
       escapeValue: false, // React already escapes

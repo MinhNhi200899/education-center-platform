@@ -533,6 +533,7 @@ model ClassStudentMonthlyFee {
   studentId String
   month     String   @db.VarChar(7) // YYYY-MM
   amount    Decimal  @db.Decimal(12, 2)
+  collectAmount Decimal? @db.Decimal(12, 2) // optional override for amount to collect this month
   note      String?  @db.Text
   setById   String?
   createdAt DateTime @default(now())

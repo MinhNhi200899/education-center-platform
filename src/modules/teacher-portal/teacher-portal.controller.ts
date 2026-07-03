@@ -147,6 +147,20 @@ export const confirmStudentPayment = asyncHandler(async (req: Request, res: Resp
   });
 });
 
+export const setStudentCollectAmount = asyncHandler(async (req: Request, res: Response) => {
+  const data = await teacherPortalService.setStudentCollectAmount(
+    req.user!.id,
+    req.params.classId,
+    req.params.studentId,
+    req.body
+  );
+  res.json({
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString() },
+  });
+});
+
 export const getPaymentSettings = asyncHandler(async (req: Request, res: Response) => {
   const data = await teacherPortalService.getPaymentSettings(req.user!.id);
   res.json({

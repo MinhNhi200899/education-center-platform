@@ -67,6 +67,80 @@ export class TeacherPortalService {
     if (invoiceStatus === 'paid' || invoiceStatus === 'issued') return false;
     return true;
   }
+
+  private isCollectAmountEditable(
+    month: string,
+    invoiceStatus: string | null | undefined
+  ): boolean {
+    if (month < this.currentMonthKey()) return false;
+    if (invoiceStatus === 'paid') return false;
+    return true;
+  }
+
+  private resolveTuitionToCollect(
+    monthlyFeeAmount: number,
+    sessionsAttended: number,
+    collectAmount: number | null | undefined
+  ): number {
+    if (collectAmount != null) {
+      return Math.round(collectAmount);
+    }
+    return Math.round(monthlyFeeAmount * sessionsAttended);
+  }
+
+  private async assertCollectAmountEditable(
+    classId: string,
+    studentId: string,
+    month: string
+  ): Promise<void> {
+    this.assertFeeMonthEditable(month);
+    const { periodStart, periodEnd } = this.parseMonthPeriod(month);
+    const paidInvoice = await prisma.invoice.findFirst({
+      where: {
+        studentId,
+        tuitionPlan: { classId },
+        issueDate: { gte: periodStart, lte: periodEnd },
+        status: 'paid',
+      },
+      select: { id: true },
+    });
+    if (paidInvoice) {
+      throw new ConflictException(
+        'Cannot change collect amount after payment.',
+        'COLLECT_AMOUNT_LOCKED'
+      );
+    }
+  }
+
+  private async syncOpenInvoiceAmount(
+    classId: string,
+    studentId: string,
+    month: string,
+    amount: number,
+    sessionsAttended: number,
+    className: string
+  ): Promise<void> {
+    const { periodStart, periodEnd } = this.parseMonthPeriod(month);
+    const invoice = await prisma.invoice.findFirst({
+      where: {
+        studentId,
+        tuitionPlan: { classId },
+        issueDate: { gte: periodStart, lte: periodEnd },
+        status: { in: ['draft', 'issued', 'overdue'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!invoice || Number(invoice.totalAmount) === amount) {
+      return;
+    }
+    await this.syncDraftInvoiceAmount(
+      invoice.id,
+      amount,
+      sessionsAttended,
+      className,
+      month
+    );
+  }
   private async resolveTeacherId(userId: string): Promise<string> {
     const teacher = await prisma.teacher.findFirst({
       where: { userId },
@@ -521,7 +595,7 @@ export class TeacherPortalService {
         ? Promise.resolve([])
         : prisma.classStudentMonthlyFee.findMany({
             where: { classId, month, studentId: { in: studentIds } },
-            select: { studentId: true, amount: true, note: true },
+            select: { studentId: true, amount: true, collectAmount: true, note: true },
           }),
       studentIds.length === 0
         ? Promise.resolve([])
@@ -552,9 +626,15 @@ export class TeacherPortalService {
       const monthlyFee = feeByStudent.get(e.studentId);
       const sessionsAttended = attendanceByStudent.get(e.studentId) ?? 0;
       const monthlyFeeAmount = monthlyFee ? Number(monthlyFee.amount) : null;
-      const calculatedTuition =
+      const collectAmount =
+        monthlyFee?.collectAmount != null ? Number(monthlyFee.collectAmount) : null;
+      const baseTuition =
         monthlyFeeAmount != null
           ? Math.round(monthlyFeeAmount * sessionsAttended)
+          : null;
+      const calculatedTuition =
+        monthlyFeeAmount != null
+          ? this.resolveTuitionToCollect(monthlyFeeAmount, sessionsAttended, collectAmount)
           : null;
 
       return {
@@ -565,12 +645,15 @@ export class TeacherPortalService {
         sessionsAttended,
         monthlyFeeAmount,
         monthlyFeeNote: monthlyFee?.note ?? null,
+        baseTuition,
+        collectAmount,
         calculatedTuition,
         tuitionAmount: monthlyFeeAmount ?? (invoice ? Number(invoice.totalAmount) : null),
         invoiceId: invoice?.id ?? null,
         invoiceStatus: invoice?.status ?? null,
         invoiceNumber: invoice?.invoiceNumber ?? null,
         feeEditable: this.isStudentFeeEditable(month, invoice?.status ?? null),
+        collectAmountEditable: this.isCollectAmountEditable(month, invoice?.status ?? null),
       };
     });
 
@@ -663,6 +746,104 @@ export class TeacherPortalService {
       month: data.month,
       amount: Number(fee.amount),
       note: fee.note,
+    };
+  }
+
+  async setStudentCollectAmount(
+    userId: string,
+    classId: string,
+    studentId: string,
+    data: { month: string; collectAmount: number | null }
+  ) {
+    const teacherId = await this.resolveTeacherId(userId);
+
+    const assignment = await prisma.classTeacher.findFirst({
+      where: { teacherId, classId },
+    });
+    if (!assignment) {
+      throw new ForbiddenException('You are not assigned to this class');
+    }
+
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { classId, studentId, status: 'active' },
+    });
+    if (!enrollment) {
+      throw new NotFoundException('Student enrollment');
+    }
+
+    await this.assertCollectAmountEditable(classId, studentId, data.month);
+
+    const fee = await prisma.classStudentMonthlyFee.findUnique({
+      where: { classId_studentId_month: { classId, studentId, month: data.month } },
+    });
+    if (!fee) {
+      throw new BadRequestException('Chưa set học phí/buổi cho học sinh này');
+    }
+
+    const { periodStart, periodEnd } = this.parseMonthPeriod(data.month);
+    const sessionsAttended = await prisma.attendanceRecord.count({
+      where: {
+        studentId,
+        status: { in: ['present', 'late'] },
+        session: {
+          classId,
+          sessionDate: { gte: periodStart, lte: periodEnd },
+        },
+      },
+    });
+
+    if (sessionsAttended === 0) {
+      throw new BadRequestException('Học sinh chưa có buổi điểm danh trong tháng này');
+    }
+
+    if (data.collectAmount != null) {
+      if (data.collectAmount < 0) {
+        throw new BadRequestException('Số tiền thu không hợp lệ');
+      }
+      if (data.collectAmount === 0) {
+        throw new BadRequestException('Số tiền thu phải lớn hơn 0');
+      }
+    }
+
+    const updated = await prisma.classStudentMonthlyFee.update({
+      where: { classId_studentId_month: { classId, studentId, month: data.month } },
+      data: {
+        collectAmount: data.collectAmount,
+        setById: userId,
+      },
+    });
+
+    const classRecord = await prisma.class.findUnique({
+      where: { id: classId },
+      select: { name: true },
+    });
+
+    const monthlyFeeAmount = Number(updated.amount);
+    const amountToCollect = this.resolveTuitionToCollect(
+      monthlyFeeAmount,
+      sessionsAttended,
+      data.collectAmount
+    );
+
+    if (classRecord) {
+      await this.syncOpenInvoiceAmount(
+        classId,
+        studentId,
+        data.month,
+        amountToCollect,
+        sessionsAttended,
+        classRecord.name
+      );
+    }
+
+    return {
+      studentId,
+      month: data.month,
+      monthlyFeeAmount,
+      sessionsAttended,
+      baseTuition: Math.round(monthlyFeeAmount * sessionsAttended),
+      collectAmount: data.collectAmount,
+      calculatedTuition: amountToCollect,
     };
   }
 
@@ -1045,7 +1226,7 @@ export class TeacherPortalService {
     const [monthlyFee, sessionsAttended] = await Promise.all([
       prisma.classStudentMonthlyFee.findUnique({
         where: { classId_studentId_month: { classId, studentId, month } },
-        select: { amount: true },
+        select: { amount: true, collectAmount: true },
       }),
       prisma.attendanceRecord.count({
         where: {
@@ -1064,7 +1245,11 @@ export class TeacherPortalService {
     }
 
     const monthlyFeeAmount = Number(monthlyFee.amount);
-    const calculatedTuition = Math.round(monthlyFeeAmount * sessionsAttended);
+    const calculatedTuition = this.resolveTuitionToCollect(
+      monthlyFeeAmount,
+      sessionsAttended,
+      monthlyFee.collectAmount != null ? Number(monthlyFee.collectAmount) : null
+    );
     if (calculatedTuition <= 0) {
       throw new BadRequestException('Học phí bằng 0 — học sinh chưa có buổi điểm danh');
     }
@@ -1085,7 +1270,11 @@ export class TeacherPortalService {
     });
 
     if (invoice) {
-      if (invoice.status === 'draft' && Number(invoice.totalAmount) !== calculatedTuition) {
+      if (
+        invoice.status !== 'paid' &&
+        invoice.status !== 'cancelled' &&
+        Number(invoice.totalAmount) !== calculatedTuition
+      ) {
         await this.syncDraftInvoiceAmount(
           invoice.id,
           calculatedTuition,
@@ -1291,7 +1480,7 @@ export class TeacherPortalService {
     const result = await paymentService.completeExternalBankPayment({
       invoiceId: receipt.invoice.id,
       amount: Number(receipt.invoice.totalAmount),
-      paymentMethod: 'bank_transfer',
+      paymentMethod: 'cash',
       transactionId: `manual:${receipt.invoice.id}:${userId}`,
       confirmedBy: userId,
     });

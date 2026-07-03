@@ -1040,7 +1040,7 @@ export class PaymentService {
   async completeExternalBankPayment(params: {
     invoiceId: string;
     amount: number;
-    paymentMethod?: 'bank_transfer' | 'vietqr';
+    paymentMethod?: 'bank_transfer' | 'vietqr' | 'cash';
     transactionId: string;
     transactionDate?: Date;
     bankCode?: string;

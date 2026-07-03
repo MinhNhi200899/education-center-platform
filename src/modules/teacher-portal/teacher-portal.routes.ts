@@ -15,6 +15,7 @@ import {
   sendStudentReceipt,
   sendClassReceiptsBulk,
   confirmStudentPayment,
+  setStudentCollectAmount,
   getPaymentSettings,
   updatePaymentSettings,
 } from './teacher-portal.controller';
@@ -72,6 +73,17 @@ router.put(
   '/classes/:classId/students/:studentId/monthly-fee',
   validateRequest({ params: classStudentParamsSchema, body: setMonthlyFeeSchema }),
   setStudentMonthlyFee
+);
+
+const setCollectAmountSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/, 'Invalid month format (YYYY-MM)'),
+  collectAmount: z.union([z.number().min(1), z.null()]),
+});
+
+router.put(
+  '/classes/:classId/students/:studentId/collect-amount',
+  validateRequest({ params: classStudentParamsSchema, body: setCollectAmountSchema }),
+  setStudentCollectAmount
 );
 
 const receiptBodySchema = z.object({

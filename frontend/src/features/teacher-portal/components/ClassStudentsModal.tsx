@@ -26,6 +26,7 @@ import { useLocaleFormatters } from '@/lib/format';
 import { SetStudentTuitionModal, type TuitionStudentTarget } from './SetStudentTuitionModal';
 import { StudentAttendedSessionsModal } from './StudentAttendedSessionsModal';
 import { ExportReceiptModal } from './ExportReceiptModal';
+import { AdjustCollectAmountModal, type CollectAmountTarget } from './AdjustCollectAmountModal';
 
 export interface TeacherClassSummary {
   classId: string;
@@ -41,12 +42,15 @@ interface ClassStudentRow {
   sessionsAttended: number;
   monthlyFeeAmount: number | null;
   monthlyFeeNote: string | null;
+  baseTuition: number | null;
+  collectAmount: number | null;
   calculatedTuition: number | null;
   tuitionAmount: number | null;
   invoiceStatus: string | null;
   invoiceNumber: string | null;
   invoiceId: string | null;
   feeEditable: boolean;
+  collectAmountEditable: boolean;
 }
 
 interface Props {
@@ -88,6 +92,9 @@ export function ClassStudentsModal({ classInfo, opened, onClose }: Props) {
   } | null>(null);
   const [sendingStudentId, setSendingStudentId] = useState<string | null>(null);
   const [confirmingStudentId, setConfirmingStudentId] = useState<string | null>(null);
+  const [collectAmountStudent, setCollectAmountStudent] = useState<CollectAmountTarget | null>(
+    null
+  );
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const month = toMonthKey(monthDate);
 
@@ -439,7 +446,7 @@ export function ClassStudentsModal({ classInfo, opened, onClose }: Props) {
                     </Table.Th>
                     <Table.Th ta="right">{t('portal.teacher.classes.studentsModal.tuition')}</Table.Th>
                     <Table.Th>{t('portal.teacher.classes.studentsModal.status')}</Table.Th>
-                    <Table.Th w={56} ta="center">{t('portal.teacher.classes.studentsModal.actions')}</Table.Th>
+                    <Table.Th w={120} ta="center">{t('portal.teacher.classes.studentsModal.actions')}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -497,15 +504,51 @@ export function ClassStudentsModal({ classInfo, opened, onClose }: Props) {
                       </Table.Td>
                       <Table.Td ta="right">
                         <Stack gap={2} align="flex-end">
-                          <Text fw={600}>{displayTuition(student)}</Text>
-                          {student.monthlyFeeAmount != null && student.calculatedTuition != null && (
-                              <Text size="xs" c="dimmed">
-                                {t('portal.teacher.classes.studentsModal.tuitionFormula', {
-                                  monthly: formatVnd(student.monthlyFeeAmount),
-                                  attended: student.sessionsAttended,
-                                })}
+                          <Anchor
+                            component="button"
+                            type="button"
+                            underline="hover"
+                            fw={600}
+                            c={
+                              student.collectAmount != null &&
+                              student.baseTuition != null &&
+                              student.collectAmount !== student.baseTuition
+                                ? 'orange'
+                                : undefined
+                            }
+                            disabled={
+                              !student.collectAmountEditable ||
+                              student.monthlyFeeAmount == null ||
+                              student.sessionsAttended === 0
+                            }
+                            onClick={() =>
+                              setCollectAmountStudent({
+                                studentId: student.studentId,
+                                fullName: student.fullName,
+                                baseTuition: student.baseTuition,
+                                collectAmount: student.collectAmount,
+                                calculatedTuition: student.calculatedTuition,
+                              })
+                            }
+                            title={t('portal.teacher.classes.studentsModal.collectAmountHint')}
+                          >
+                            {displayTuition(student)}
+                          </Anchor>
+                          {student.baseTuition != null &&
+                            student.collectAmount != null &&
+                            student.collectAmount !== student.baseTuition && (
+                              <Text size="xs" c="dimmed" td="line-through">
+                                {formatVnd(student.baseTuition)}
                               </Text>
                             )}
+                          {student.monthlyFeeAmount != null && student.baseTuition != null && (
+                            <Text size="xs" c="dimmed">
+                              {t('portal.teacher.classes.studentsModal.tuitionFormula', {
+                                monthly: formatVnd(student.monthlyFeeAmount),
+                                attended: student.sessionsAttended,
+                              })}
+                            </Text>
+                          )}
                         </Stack>
                       </Table.Td>
                       <Table.Td>
@@ -526,7 +569,31 @@ export function ClassStudentsModal({ classInfo, opened, onClose }: Props) {
                         )}
                       </Table.Td>
                       <Table.Td ta="center">
-                        <Menu shadow="md" position="bottom-end" withinPortal>
+                        <Group gap={4} justify="center" wrap="nowrap">
+                          {student.invoiceStatus !== 'paid' &&
+                            student.monthlyFeeAmount != null &&
+                            student.sessionsAttended > 0 && (
+                              <Button
+                                size="compact-xs"
+                                variant="light"
+                                color="green"
+                                leftSection={<IconCash size={14} />}
+                                loading={
+                                  confirmPaidMutation.isPending &&
+                                  confirmingStudentId === student.studentId
+                                }
+                                onClick={() => {
+                                  setConfirmingStudentId(student.studentId);
+                                  confirmPaidMutation.mutate({
+                                    studentId: student.studentId,
+                                    fullName: student.fullName,
+                                  });
+                                }}
+                              >
+                                {t('portal.teacher.classes.studentsModal.confirmPaid')}
+                              </Button>
+                            )}
+                          <Menu shadow="md" position="bottom-end" withinPortal>
                           <Menu.Target>
                             <ActionIcon variant="subtle" color="gray" aria-label={t('portal.teacher.classes.studentsModal.actions')}>
                               <IconDots size={16} />
@@ -604,6 +671,7 @@ export function ClassStudentsModal({ classInfo, opened, onClose }: Props) {
                             </Menu.Item>
                           </Menu.Dropdown>
                         </Menu>
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
                   ))}
@@ -629,6 +697,15 @@ export function ClassStudentsModal({ classInfo, opened, onClose }: Props) {
         student={sessionsStudent}
         opened={!!sessionsStudent}
         onClose={() => setSessionsStudent(null)}
+      />
+
+      <AdjustCollectAmountModal
+        classId={classInfo?.classId ?? ''}
+        month={month}
+        student={collectAmountStudent}
+        opened={!!collectAmountStudent}
+        onClose={() => setCollectAmountStudent(null)}
+        onSuccess={() => refetch()}
       />
 
       <ExportReceiptModal

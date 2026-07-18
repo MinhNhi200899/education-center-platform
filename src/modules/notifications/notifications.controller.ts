@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { prisma } from '../../config/database';
 import { NotFoundException } from '../../shared/types/error.types';
+import { notificationHub } from '../../shared/services/notification-hub.service';
+import { mapNotificationForClient } from './create-notification';
 
 export const listMyNotifications = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.id;
@@ -15,18 +17,36 @@ export const listMyNotifications = asyncHandler(async (req: Request, res: Respon
     success: true,
     data: {
       unreadCount: notifications.filter((n) => !n.isRead).length,
-      items: notifications.map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        data: n.data,
-        isRead: n.isRead,
-        createdAt: n.createdAt,
-      })),
+      items: notifications.map((n) => mapNotificationForClient(n)),
     },
     meta: { timestamp: new Date().toISOString() },
   });
+});
+
+/**
+ * SSE stream — client connects once; server pushes `notification` events.
+ * Auth via Bearer header or `?access_token=` (EventSource).
+ */
+export const streamNotifications = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  req.socket.setTimeout(0);
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  res.write(`event: connected\ndata: ${JSON.stringify({ userId, t: Date.now() })}\n\n`);
+
+  const unsubscribe = notificationHub.subscribe(userId, res);
+
+  const onClose = () => {
+    unsubscribe();
+  };
+
+  req.on('close', onClose);
+  req.on('aborted', onClose);
 });
 
 export const markNotificationRead = asyncHandler(async (req: Request, res: Response) => {

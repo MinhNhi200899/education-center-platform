@@ -38,6 +38,7 @@ import { NotFoundException, BadRequestException, ConflictException } from '../..
 import { format, differenceInDays, addMonths, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { renderReceiptPreview, ReceiptTheme, getAvailableThemes } from './receipt-themes.service';
 import { zaloService } from './zalo.service';
+import { createNotification } from '../../notifications/create-notification';
 
 export class PaymentService {
   // ================================
@@ -604,19 +605,17 @@ export class PaymentService {
         continue;
       }
 
-      await prisma.notification.create({
+      await createNotification({
+        userId: targetUserId,
+        type: 'tuition_debt_reminder',
+        title: 'Nhắc nợ học phí',
+        message,
         data: {
-          userId: targetUserId,
-          type: 'tuition_debt_reminder',
-          title: 'Nhắc nợ học phí',
-          message,
-          data: {
-            invoiceId: invoice.id,
-            invoiceNumber: invoice.invoiceNumber,
-            studentId: invoice.student.id,
-            daysOverdue,
-            amount: Number(invoice.totalAmount),
-          },
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          studentId: invoice.student.id,
+          daysOverdue,
+          amount: Number(invoice.totalAmount),
         },
       });
 

@@ -10,34 +10,36 @@ declare global {
   }
 }
 
+function extractAccessToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    if (token) return token;
+  }
+
+  // EventSource cannot set Authorization headers — allow query token for SSE.
+  const queryToken = req.query.access_token;
+  if (typeof queryToken === 'string' && queryToken.trim()) {
+    return queryToken.trim();
+  }
+
+  return null;
+}
+
 export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader?.startsWith('Bearer ')) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Missing or invalid authorization header',
-          timestamp: new Date().toISOString(),
-        },
-      });
-      return;
-    }
-
-    const token = authHeader.substring(7);
+    const token = extractAccessToken(req);
 
     if (!token) {
       res.status(401).json({
         success: false,
         error: {
           code: 'UNAUTHORIZED',
-          message: 'Token is required',
+          message: 'Missing or invalid authorization header',
           timestamp: new Date().toISOString(),
         },
       });

@@ -28,6 +28,7 @@ import { NotFoundException, BadRequestException } from '../../../shared/types/er
 import { assertSessionAllowsAttendance } from '../../../shared/utils/session-timing';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { scheduleService } from '../../classes/services/schedule.service';
+import { createNotification } from '../../notifications/create-notification';
 
 // ============================================================
 // ATTENDANCE SERVICE
@@ -1244,16 +1245,14 @@ export class AttendanceService {
       for (const parent of parents) {
         if (!parent.userId) continue;
 
-        await this.prisma.notification.create({
-          data: {
-            userId: parent.userId,
-            type: 'attendance_absent',
-            title: 'Thông báo vắng học',
-            message: session
-              ? `Học sinh vắng buổi học lớp ${session.class.name} ngày ${session.sessionDate.toLocaleDateString('vi-VN')}`
-              : 'Học sinh được ghi nhận vắng mặt',
-            data: { studentId, sessionId: session?.id },
-          },
+        await createNotification({
+          userId: parent.userId,
+          type: 'attendance_absent',
+          title: 'Thông báo vắng học',
+          message: session
+            ? `Học sinh vắng buổi học lớp ${session.class.name} ngày ${session.sessionDate.toLocaleDateString('vi-VN')}`
+            : 'Học sinh được ghi nhận vắng mặt',
+          data: { studentId, sessionId: session?.id },
         });
       }
 

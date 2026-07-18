@@ -11,6 +11,7 @@ import {
   assertSessionAllowsHomework,
   assertSessionAllowsReschedule,
 } from '../../../shared/utils/session-timing';
+import { createNotification } from '../../notifications/create-notification';
 
 const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID ?? '';
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -535,17 +536,15 @@ export class SessionService {
 
     if (updated.student.userId) {
       const dateStr = session.sessionDate.toISOString().split('T')[0];
-      await prisma.notification.create({
+      await createNotification({
+        userId: updated.student.userId,
+        type: 'homework_feedback',
+        title: 'Giáo viên nhận xét bài tập',
+        message: `Có nhận xét mới cho buổi ${session.class.name} (${dateStr} ${session.startTime}).`,
         data: {
-          userId: updated.student.userId,
-          type: 'homework_feedback',
-          title: 'Giáo viên nhận xét bài tập',
-          message: `Có nhận xét mới cho buổi ${session.class.name} (${dateStr} ${session.startTime}).`,
-          data: {
-            sessionId,
-            studentId,
-            submissionId: updated.id,
-          },
+          sessionId,
+          studentId,
+          submissionId: updated.id,
         },
       });
     }

@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStudentUser } from '@/lib/roles';
+import { useNotificationStream } from './useNotificationStream';
 
 interface NotificationItem {
   id: string;
@@ -34,6 +35,7 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Initial load only — live updates via SSE (no refetchInterval polling)
   const { data } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
@@ -41,21 +43,47 @@ export function NotificationBell() {
       return res.data.data as { unreadCount: number; items: NotificationItem[] };
     },
     enabled: !!user,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
   });
+
+  useNotificationStream(!!user);
 
   const markReadMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.patch(`/notifications/${id}/read`);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData<{ unreadCount: number; items: NotificationItem[] }>(
+        ['notifications'],
+        (prev) => {
+          if (!prev) return prev;
+          const wasUnread = prev.items.find((n) => n.id === id && !n.isRead);
+          return {
+            unreadCount: Math.max(0, prev.unreadCount - (wasUnread ? 1 : 0)),
+            items: prev.items.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+          };
+        }
+      );
+    },
   });
 
   const markAllMutation = useMutation({
     mutationFn: async () => {
       await api.post('/notifications/read-all');
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => {
+      queryClient.setQueryData<{ unreadCount: number; items: NotificationItem[] }>(
+        ['notifications'],
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            unreadCount: 0,
+            items: prev.items.map((n) => ({ ...n, isRead: true })),
+          };
+        }
+      );
+    },
   });
 
   const unread = data?.unreadCount ?? 0;

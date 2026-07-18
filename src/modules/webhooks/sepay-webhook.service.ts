@@ -5,6 +5,7 @@ import {
   buildSepayQrImageUrl,
   normalizeSepayPaymentCode,
 } from '../../shared/services/sepay-qr.service';
+import { createNotification } from '../notifications/create-notification';
 
 export interface SepayWebhookPayload {
   id: number;
@@ -102,18 +103,16 @@ async function notifyTeachersTuitionPaid(
 
   for (const ct of classTeachers) {
     if (!ct.teacher.userId) continue;
-    await prisma.notification.create({
+    await createNotification({
+      userId: ct.teacher.userId,
+      type: 'tuition_paid',
+      title: 'Học sinh đã thanh toán học phí',
+      message: `${invoice.student.fullName} đã chuyển ${amountLabel}đ (${className})`,
       data: {
-        userId: ct.teacher.userId,
-        type: 'tuition_paid',
-        title: 'Học sinh đã thanh toán học phí',
-        message: `${invoice.student.fullName} đã chuyển ${amountLabel}đ (${className})`,
-        data: {
-          invoiceId,
-          studentId: invoice.student.id,
-          amount,
-          source: 'sepay',
-        },
+        invoiceId,
+        studentId: invoice.student.id,
+        amount,
+        source: 'sepay',
       },
     });
   }

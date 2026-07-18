@@ -36,8 +36,15 @@ app.use(cors({
   credentials: config.cors.credentials,
 }));
 
-// Compression
-app.use(compression());
+// Compression — skip SSE (buffering breaks event streams)
+app.use(
+  compression({
+    filter: (req, res) => {
+      if (req.path.includes('/notifications/stream')) return false;
+      return compression.filter(req, res);
+    },
+  })
+);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

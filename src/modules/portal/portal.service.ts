@@ -7,6 +7,7 @@ import {
 } from '../../shared/types/error.types';
 import { uploadHomeworkFile } from '../../shared/services/homework-upload.service';
 import { paymentService } from '../payments/services/payment.service';
+import { createNotification } from '../notifications/create-notification';
 
 export class PortalService {
   private async resolveStudentId(userId: string): Promise<string> {
@@ -637,17 +638,15 @@ export class PortalService {
 
     // Notify teacher that student submitted
     if (session.teacherId) {
-      await prisma.notification.create({
+      await createNotification({
+        userId: session.teacherId,
+        type: 'homework_submission',
+        title: 'Học sinh nộp bài tập',
+        message: `Có bài nộp mới cho buổi ${session.class.name} (${session.sessionDate.toISOString().split('T')[0]} ${session.startTime}).`,
         data: {
-          userId: session.teacherId,
-          type: 'homework_submission',
-          title: 'Học sinh nộp bài tập',
-          message: `Có bài nộp mới cho buổi ${session.class.name} (${session.sessionDate.toISOString().split('T')[0]} ${session.startTime}).`,
-          data: {
-            sessionId,
-            studentId,
-            submissionId: submission.id,
-          },
+          sessionId,
+          studentId,
+          submissionId: submission.id,
         },
       });
     }

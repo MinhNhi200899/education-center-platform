@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '../../shared/types/error.types';
+import { createNotification } from '../notifications/create-notification';
 
 export class TeacherPortalService {
   private currentMonthKey(): string {
@@ -1421,18 +1422,16 @@ export class TeacherPortalService {
       : share.messageTemplate;
 
     if (student?.userId) {
-      await prisma.notification.create({
+      await createNotification({
+        userId: student.userId,
+        type: 'tuition_invoice',
+        title: 'Phiếu thu học phí',
+        message: transferMessage,
         data: {
-          userId: student.userId,
-          type: 'tuition_invoice',
-          title: 'Phiếu thu học phí',
-          message: transferMessage,
-          data: {
-            ...(share.payload as object),
-            invoiceId: receipt.invoice.id,
-            qrCodeUrl: qr?.qrCodeUrl ?? null,
-            paymentCode: qr?.description ?? receipt.invoice.invoiceNumber,
-          },
+          ...(share.payload as object),
+          invoiceId: receipt.invoice.id,
+          qrCodeUrl: qr?.qrCodeUrl ?? null,
+          paymentCode: qr?.description ?? receipt.invoice.invoiceNumber,
         },
       });
     }

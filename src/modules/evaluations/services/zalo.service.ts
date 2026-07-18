@@ -2,6 +2,7 @@ import { prisma } from '../../../config/database';
 import { logger } from '../../../shared/services/logger.service';
 import { NotFoundException } from '../../../shared/types/error.types';
 import { EvaluationResponse } from '../types/evaluation.types';
+import { createNotification } from '../../notifications/create-notification';
 
 export interface EvaluationZaloSharePayload {
   evaluationId: string;
@@ -61,14 +62,12 @@ export class EvaluationZaloService {
     });
 
     if (sharedByUserId) {
-      await prisma.notification.create({
-        data: {
-          userId: sharedByUserId,
-          type: 'evaluation_zalo_share',
-          title: 'Đã gửi nhận xét Zalo (stub)',
-          message: `${studentName} - ${className} (${dateStr})`,
-          data: payload as object,
-        },
+      await createNotification({
+        userId: sharedByUserId,
+        type: 'evaluation_zalo_share',
+        title: 'Đã gửi nhận xét Zalo (stub)',
+        message: `${studentName} - ${className} (${dateStr})`,
+        data: payload as object,
       });
     }
 

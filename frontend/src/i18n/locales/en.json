@@ -84,6 +84,7 @@
     "rolesPermissions": "Roles & Permissions",
     "mySchedule": "My Schedule",
     "myClasses": "My Classes",
+    "myHomework": "Homework",
     "myTuition": "Tuition & Notices"
   },
   "auth": {
@@ -912,7 +913,19 @@
         "noUpcoming": "No upcoming sessions yet.",
         "badgeUpcoming": "Upcoming",
         "myClasses": "My classes",
-        "noClassAssigned": "Not assigned to any class yet."
+        "noClassAssigned": "Not assigned to any class yet.",
+        "recentHomework": "Recent homework",
+        "viewAllHomework": "View all",
+        "noRecentHomework": "No homework yet."
+      },
+      "homework": {
+        "title": "My Homework",
+        "subtitle": "Assignments and materials from your classes",
+        "loading": "Loading...",
+        "empty": "No homework has been assigned yet.",
+        "attachments": "{{count}} attachment(s)",
+        "openFile": "Open file",
+        "file": "Attachment"
       },
       "schedule": {
         "title": "My Schedule",

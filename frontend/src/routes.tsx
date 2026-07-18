@@ -55,6 +55,7 @@ import {
   StudentSchedulePage,
   StudentTuitionPage,
   StudentInvoiceDetailPage,
+  StudentHomeworkPage,
 } from '@/features/portal';
 
 // Teacher portal
@@ -155,6 +156,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <StudentHomePage /> },
               { path: 'schedule', element: <StudentSchedulePage /> },
+              { path: 'homework', element: <StudentHomeworkPage /> },
               { path: 'tuition', element: <StudentTuitionPage /> },
               { path: 'tuition/:id', element: <StudentInvoiceDetailPage /> },
             ],

@@ -13,6 +13,7 @@ import {
   IconShield,
   IconQrcode,
   IconHome,
+  IconBook,
 } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isStudentUser, isTeacherUser } from '@/lib/roles';
@@ -35,6 +36,7 @@ function getActiveNavPath(pathname: string, items: NavItem[]): string | null {
 const studentNavItems: NavItem[] = [
   { key: 'nav.home', icon: IconHome, path: '/portal' },
   { key: 'nav.mySchedule', icon: IconCalendarEvent, path: '/portal/schedule' },
+  { key: 'nav.myHomework', icon: IconBook, path: '/portal/homework' },
   { key: 'nav.myTuition', icon: IconReceipt, path: '/portal/tuition' },
 ];
 

@@ -38,3 +38,12 @@ export const getInvoiceById = asyncHandler(async (req: Request, res: Response) =
     meta: { timestamp: new Date().toISOString() },
   });
 });
+
+export const getHomework = asyncHandler(async (req: Request, res: Response) => {
+  const data = await portalService.getHomework(req.user!.id);
+  res.json({
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString() },
+  });
+});

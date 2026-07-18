@@ -1,10 +1,11 @@
-import { Stack, Title, Text, Paper, Group, Badge, Button, SimpleGrid, Alert } from '@mantine/core';
-import { IconCalendar, IconSchool, IconReceipt, IconBell } from '@tabler/icons-react';
+import { Stack, Title, Text, Paper, Group, Badge, Button, SimpleGrid, Alert, Anchor } from '@mantine/core';
+import { IconCalendar, IconSchool, IconReceipt, IconBell, IconFile } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
+import type { HomeworkItem } from './StudentHomeworkPage';
 
 export function StudentHomePage() {
   const { t } = useTranslation();
@@ -16,11 +17,20 @@ export function StudentHomePage() {
     },
   });
 
+  const { data: homeworkData, isLoading: homeworkLoading } = useQuery({
+    queryKey: ['portal-homework'],
+    queryFn: async () => {
+      const res = await api.get('/portal/homework');
+      return res.data.data as { items: HomeworkItem[] };
+    },
+  });
+
   if (isLoading) {
     return <Text c="dimmed">{t('portal.student.home.loading')}</Text>;
   }
 
   const pendingCount = data?.pendingInvoices?.length ?? 0;
+  const recentHomework = (homeworkData?.items ?? []).slice(0, 5);
 
   return (
     <Stack gap="lg">
@@ -75,6 +85,55 @@ export function StudentHomePage() {
           </Text>
         </Paper>
       </SimpleGrid>
+
+      <Paper withBorder p="md" radius="md">
+        <Group justify="space-between" mb="md">
+          <Title order={4}>{t('portal.student.home.recentHomework')}</Title>
+          <Button component={Link} to="/portal/homework" variant="light" size="xs">
+            {t('portal.student.home.viewAllHomework')}
+          </Button>
+        </Group>
+        {homeworkLoading ? (
+          <Text c="dimmed" size="sm">
+            {t('portal.student.homework.loading')}
+          </Text>
+        ) : recentHomework.length === 0 ? (
+          <Text c="dimmed" size="sm">
+            {t('portal.student.home.noRecentHomework')}
+          </Text>
+        ) : (
+          <Stack gap="sm">
+            {recentHomework.map((item) => (
+              <Group key={item.sessionId} justify="space-between" align="flex-start" wrap="nowrap">
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Text fw={500}>{item.className}</Text>
+                  <Text size="xs" c="dimmed">
+                    {dayjs(item.sessionDate).format('DD/MM/YYYY')} · {item.startTime}–{item.endTime}
+                  </Text>
+                  {item.notes && (
+                    <Text size="sm" lineClamp={2} mt={4}>
+                      {item.notes}
+                    </Text>
+                  )}
+                  {item.materials[0] && (
+                    <Anchor
+                      href={item.materials[0].fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="xs"
+                      display="inline-flex"
+                      style={{ alignItems: 'center', gap: 4, marginTop: 4 }}
+                    >
+                      <IconFile size={12} />
+                      {item.materials[0].fileName}
+                    </Anchor>
+                  )}
+                </div>
+              </Group>
+            ))}
+          </Stack>
+        )}
+      </Paper>
 
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" mb="md">

@@ -226,6 +226,69 @@ export class PortalService {
       amountDue: Number(inv.totalAmount) - Number(inv.paidAmount ?? 0),
     }));
   }
+
+  async getHomework(userId: string) {
+    const studentId = await this.resolveStudentId(userId);
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: { studentId, status: EnrollmentStatus.active },
+      select: { classId: true },
+    });
+    const classIds = enrollments.map((e) => e.classId);
+
+    if (classIds.length === 0) {
+      return { items: [] };
+    }
+
+    const sessions = await prisma.session.findMany({
+      where: {
+        classId: { in: classIds },
+        OR: [
+          { notes: { not: null } },
+          { materials: { some: {} } },
+        ],
+      },
+      orderBy: [{ sessionDate: 'desc' }, { startTime: 'desc' }],
+      take: 30,
+      include: {
+        class: { select: { id: true, name: true } },
+        materials: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            fileUrl: true,
+            fileName: true,
+            fileType: true,
+            fileSize: true,
+          },
+        },
+      },
+    });
+
+    const items = sessions
+      .filter((s) => {
+        const hasNotes = Boolean(s.notes?.trim());
+        return hasNotes || s.materials.length > 0;
+      })
+      .map((s) => ({
+        sessionId: s.id,
+        classId: s.classId,
+        className: s.class.name,
+        sessionDate: s.sessionDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        notes: s.notes?.trim() || null,
+        materials: s.materials.map((m) => ({
+          id: m.id,
+          fileUrl: m.fileUrl,
+          fileName: m.fileName,
+          fileType: m.fileType,
+          fileSize: m.fileSize,
+        })),
+      }));
+
+    return { items };
+  }
 }
 
 export const portalService = new PortalService();

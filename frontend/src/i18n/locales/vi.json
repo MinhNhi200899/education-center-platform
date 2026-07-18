@@ -84,6 +84,7 @@
     "rolesPermissions": "Vai trò & Quyền",
     "mySchedule": "Lịch của tôi",
     "myClasses": "Lớp của tôi",
+    "myHomework": "Bài tập",
     "myTuition": "Học phí & Thông báo"
   },
   "auth": {
@@ -912,7 +913,19 @@
         "noUpcoming": "Chưa có buổi học nào trong lịch.",
         "badgeUpcoming": "Sắp diễn ra",
         "myClasses": "Lớp của tôi",
-        "noClassAssigned": "Chưa được xếp lớp."
+        "noClassAssigned": "Chưa được xếp lớp.",
+        "recentHomework": "Bài tập gần đây",
+        "viewAllHomework": "Xem tất cả",
+        "noRecentHomework": "Chưa có bài tập nào."
+      },
+      "homework": {
+        "title": "Bài tập của tôi",
+        "subtitle": "Bài tập và tài liệu từ các lớp bạn đang học",
+        "loading": "Đang tải...",
+        "empty": "Chưa có bài tập nào được giao.",
+        "attachments": "{{count}} tệp đính kèm",
+        "openFile": "Mở tệp",
+        "file": "Tệp đính kèm"
       },
       "schedule": {
         "title": "Lịch học của tôi",

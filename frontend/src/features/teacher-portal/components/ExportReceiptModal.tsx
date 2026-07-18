@@ -87,7 +87,6 @@ export function ExportReceiptModal({
     if (opened && student) {
       mutation.mutate();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, student?.studentId, month, classId]);
 
   const handlePrint = () => {

@@ -89,6 +89,8 @@ export function SessionHomeworkModal({ session, opened, onClose }: Props) {
           fileName: string | null;
           note: string | null;
           submittedAt: string;
+          feedback: string | null;
+          feedbackAt: string | null;
         } | null;
       };
     },
@@ -269,6 +271,27 @@ export function SessionHomeworkModal({ session, opened, onClose }: Props) {
                       {submission.fileName || t('portal.student.homework.openFile')}
                     </Anchor>
                   )}
+                </Alert>
+              )}
+
+              {submission?.feedback && (
+                <Alert
+                  icon={<IconInfoCircle size={16} />}
+                  color="indigo"
+                  variant="light"
+                  radius="md"
+                  mb="sm"
+                  title={
+                    submission.feedbackAt
+                      ? t('portal.student.schedule.homeworkModal.teacherFeedbackAt', {
+                          time: dayjs(submission.feedbackAt).format('HH:mm DD/MM/YYYY'),
+                        })
+                      : t('portal.student.schedule.homeworkModal.teacherFeedback')
+                  }
+                >
+                  <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                    {submission.feedback}
+                  </Text>
                 </Alert>
               )}
 

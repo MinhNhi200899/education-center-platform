@@ -936,7 +936,11 @@
         "empty": "No homework has been assigned yet.",
         "attachments": "{{count}} attachment(s)",
         "openFile": "Open file",
-        "file": "Attachment"
+        "file": "Attachment",
+        "submitted": "Submitted",
+        "notSubmitted": "Not submitted",
+        "hasFeedback": "Has feedback",
+        "openHint": "Tap to view the assignment, submit, or read feedback."
       },
       "schedule": {
         "title": "My Schedule",
@@ -982,7 +986,9 @@
           "openUntil": "Open until {{time}}",
           "locked": "Submissions locked",
           "lockedEmpty": "This class has ended — submissions are closed.",
-          "submittedAt": "Submitted at {{time}}"
+          "submittedAt": "Submitted at {{time}}",
+          "teacherFeedback": "Teacher feedback",
+          "teacherFeedbackAt": "Teacher feedback · {{time}}"
         }
       },
       "tuition": {
@@ -1172,7 +1178,26 @@
           "submit": "Assign homework",
           "success": "Homework assigned to {{count}} students",
           "failed": "Could not assign homework"
-        }
+        },
+        "reviewHomework": {
+          "title": "Student submissions",
+          "open": "View submissions",
+          "students": "Students",
+          "submittedSummary": "Submitted {{submitted}}/{{total}}",
+          "noStudents": "No students in this class.",
+          "selectStudent": "Select a student to view their submission.",
+          "notSubmitted": "{{name}} has not submitted yet.",
+          "submission": "Submission",
+          "noNote": "No written note.",
+          "openFile": "Open submission file",
+          "feedbackLabel": "Feedback for student",
+          "feedbackPlaceholder": "Write comments or suggestions...",
+          "saveFeedback": "Send feedback",
+          "feedbackSuccess": "Feedback sent to the student",
+          "feedbackFailed": "Could not send feedback",
+          "lastFeedbackAt": "Last feedback: {{time}}"
+        },
+        "homeworkSubmissionsBadge": "{{count}} submitted"
       },
       "classes": {
         "title": "My Classes",

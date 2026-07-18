@@ -23,11 +23,12 @@ interface Props {
   opened: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onOpenReview?: () => void;
 }
 
 const ACCEPTED_FILES = '.pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-export function AssignHomeworkModal({ session, opened, onClose, onSuccess }: Props) {
+export function AssignHomeworkModal({ session, opened, onClose, onSuccess, onOpenReview }: Props) {
   const { t } = useTranslation();
   const [homework, setHomework] = useState('');
   const [link, setLink] = useState('');
@@ -205,17 +206,26 @@ export function AssignHomeworkModal({ session, opened, onClose, onSuccess }: Pro
           )}
         </div>
 
-        <Group justify="flex-end">
-          <Button variant="light" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            onClick={() => assignMutation.mutate()}
-            loading={assignMutation.isPending}
-            disabled={!canSubmit}
-          >
-            {t('portal.teacher.schedule.assignHomework.submit')}
-          </Button>
+        <Group justify="space-between">
+          {onOpenReview ? (
+            <Button variant="subtle" onClick={onOpenReview}>
+              {t('portal.teacher.schedule.reviewHomework.open')}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Group>
+            <Button variant="light" onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => assignMutation.mutate()}
+              loading={assignMutation.isPending}
+              disabled={!canSubmit}
+            >
+              {t('portal.teacher.schedule.assignHomework.submit')}
+            </Button>
+          </Group>
         </Group>
       </Stack>
     </Modal>

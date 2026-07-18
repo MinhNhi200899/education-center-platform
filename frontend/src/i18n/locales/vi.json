@@ -936,7 +936,11 @@
         "empty": "Chưa có bài tập nào được giao.",
         "attachments": "{{count}} tệp đính kèm",
         "openFile": "Mở tệp",
-        "file": "Tệp đính kèm"
+        "file": "Tệp đính kèm",
+        "submitted": "Đã nộp",
+        "notSubmitted": "Chưa nộp",
+        "hasFeedback": "Có nhận xét",
+        "openHint": "Bấm để xem bài tập, nộp bài hoặc đọc nhận xét."
       },
       "schedule": {
         "title": "Lịch học của tôi",
@@ -982,7 +986,9 @@
           "openUntil": "Mở đến {{time}}",
           "locked": "Đã khóa nộp bài",
           "lockedEmpty": "Buổi học đã kết thúc — không thể nộp bài nữa.",
-          "submittedAt": "Đã nộp lúc {{time}}"
+          "submittedAt": "Đã nộp lúc {{time}}",
+          "teacherFeedback": "Nhận xét giáo viên",
+          "teacherFeedbackAt": "Nhận xét giáo viên · {{time}}"
         }
       },
       "tuition": {
@@ -1176,7 +1182,26 @@
           "submit": "Giao bài",
           "success": "Đã giao bài cho {{count}} học sinh",
           "failed": "Không thể giao bài"
-        }
+        },
+        "reviewHomework": {
+          "title": "Bài nộp của học sinh",
+          "open": "Xem bài nộp",
+          "students": "Học sinh",
+          "submittedSummary": "Đã nộp {{submitted}}/{{total}}",
+          "noStudents": "Lớp chưa có học sinh.",
+          "selectStudent": "Chọn một học sinh để xem bài nộp.",
+          "notSubmitted": "{{name}} chưa nộp bài.",
+          "submission": "Bài làm",
+          "noNote": "Không có ghi chú văn bản.",
+          "openFile": "Mở tệp bài nộp",
+          "feedbackLabel": "Nhận xét cho học sinh",
+          "feedbackPlaceholder": "Viết nhận xét, góp ý cho bài làm...",
+          "saveFeedback": "Gửi nhận xét",
+          "feedbackSuccess": "Đã gửi nhận xét cho học sinh",
+          "feedbackFailed": "Không gửi được nhận xét",
+          "lastFeedbackAt": "Nhận xét gần nhất: {{time}}"
+        },
+        "homeworkSubmissionsBadge": "{{count}} bài nộp"
       },
       "classes": {
         "title": "Lớp của tôi",

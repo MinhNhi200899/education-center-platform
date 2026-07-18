@@ -47,6 +47,7 @@ interface Props {
   opened: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onOpenReview?: () => void;
 }
 
 const SCREENSHOT_ACCEPT = 'image/png,image/jpeg,image/jpg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif';
@@ -70,7 +71,7 @@ function imageFromClipboardEvent(event: ClipboardEvent): File | null {
   return null;
 }
 
-export function MarkAttendanceModal({ session, opened, onClose, onSuccess }: Props) {
+export function MarkAttendanceModal({ session, opened, onClose, onSuccess, onOpenReview }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const pasteZoneRef = useRef<HTMLDivElement>(null);
@@ -470,19 +471,28 @@ export function MarkAttendanceModal({ session, opened, onClose, onSuccess }: Pro
             </Stack>
           )}
 
-          <Group justify="flex-end">
-            <Button variant="light" onClick={onClose}>
-              {attendanceLocked ? t('common.close') : t('common.cancel')}
-            </Button>
-            {!attendanceLocked && (
-              <Button
-                onClick={handleRequestSave}
-                loading={saveMutation.isPending}
-                disabled={!canSave}
-              >
-                {t('portal.teacher.schedule.attendance.submit')}
+          <Group justify="space-between">
+            {onOpenReview ? (
+              <Button variant="subtle" onClick={onOpenReview}>
+                {t('portal.teacher.schedule.reviewHomework.open')}
               </Button>
+            ) : (
+              <span />
             )}
+            <Group>
+              <Button variant="light" onClick={onClose}>
+                {attendanceLocked ? t('common.close') : t('common.cancel')}
+              </Button>
+              {!attendanceLocked && (
+                <Button
+                  onClick={handleRequestSave}
+                  loading={saveMutation.isPending}
+                  disabled={!canSave}
+                >
+                  {t('portal.teacher.schedule.attendance.submit')}
+                </Button>
+              )}
+            </Group>
           </Group>
         </Stack>
       </Modal>

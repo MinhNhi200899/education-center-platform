@@ -10,6 +10,8 @@ import {
   updateSession,
   deleteSession,
   addSessionMaterial,
+  listHomeworkSubmissions,
+  setHomeworkFeedback,
 } from './sessions.controller';
 
 const router = Router();
@@ -19,6 +21,15 @@ router.use(authenticate);
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)');
 
 const sessionIdSchema = z.object({ id: z.string().uuid() });
+
+const feedbackParamsSchema = z.object({
+  sessionId: z.string().uuid(),
+  studentId: z.string().uuid(),
+});
+
+const feedbackBodySchema = z.object({
+  feedback: z.string().min(1, 'Feedback is required').max(2000),
+});
 
 const createSessionSchema = z.object({
   classId: z.string().uuid(),
@@ -55,6 +66,20 @@ router.post(
   requirePermission('sessions.create'),
   validateRequest({ body: createSessionSchema }),
   createSession
+);
+
+router.get(
+  '/:id/homework-submissions',
+  requirePermission('sessions.read'),
+  validateRequest({ params: sessionIdSchema }),
+  listHomeworkSubmissions
+);
+
+router.put(
+  '/:sessionId/homework-submissions/:studentId/feedback',
+  requirePermission('sessions.update'),
+  validateRequest({ params: feedbackParamsSchema, body: feedbackBodySchema }),
+  setHomeworkFeedback
 );
 
 router.get(

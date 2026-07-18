@@ -499,17 +499,20 @@ model SessionMaterial {
 
 // Student homework submission for a session
 model HomeworkSubmission {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   sessionId   String
   studentId   String
-  fileUrl     String?  @db.VarChar(500)
-  fileName    String?  @db.VarChar(255)
-  fileType    String?  @db.VarChar(100)
+  fileUrl     String?   @db.VarChar(500)
+  fileName    String?   @db.VarChar(255)
+  fileType    String?   @db.VarChar(100)
   fileSize    Int?
-  driveFileId String?  @db.VarChar(100)
-  note        String?  @db.Text
-  submittedAt DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  driveFileId String?   @db.VarChar(100)
+  note        String?   @db.Text
+  feedback    String?   @db.Text
+  feedbackAt  DateTime?
+  feedbackBy  String?   @db.VarChar(36)
+  submittedAt DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)

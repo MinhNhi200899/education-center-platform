@@ -14,6 +14,7 @@ export interface TeacherScheduleSession {
   status: string;
   sessionType?: string;
   attendanceMarked?: boolean;
+  homeworkSubmissionCount?: number;
   studentNames?: string[];
 }
 

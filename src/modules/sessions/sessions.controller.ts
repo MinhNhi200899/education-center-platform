@@ -64,3 +64,28 @@ export const addSessionMaterial = asyncHandler(async (req: Request, res: Respons
     meta: { timestamp: new Date().toISOString() },
   });
 });
+
+export const listHomeworkSubmissions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await assertSessionCenterAccess(req, req.params.id);
+  const data = await sessionService.listHomeworkSubmissions(req.params.id, req.user!.id);
+  res.json({
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString() },
+  });
+});
+
+export const setHomeworkFeedback = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await assertSessionCenterAccess(req, req.params.sessionId);
+  const data = await sessionService.setHomeworkFeedback(
+    req.params.sessionId,
+    req.params.studentId,
+    req.user!.id,
+    req.body.feedback
+  );
+  res.json({
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString() },
+  });
+});

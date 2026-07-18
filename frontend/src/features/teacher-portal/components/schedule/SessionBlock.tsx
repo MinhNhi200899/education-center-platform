@@ -126,9 +126,18 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
         {session.startTime}–{session.endTime}
       </Text>
       {!isOverlay && (
-        <Badge size="xs" variant="light" color={badgeColor} mt={2}>
-          {badgeLabel}
-        </Badge>
+        <Group gap={4} mt={2} wrap="wrap">
+          <Badge size="xs" variant="light" color={badgeColor}>
+            {badgeLabel}
+          </Badge>
+          {(session.homeworkSubmissionCount ?? 0) > 0 && (
+            <Badge size="xs" variant="filled" color="indigo">
+              {t('portal.teacher.schedule.homeworkSubmissionsBadge', {
+                count: session.homeworkSubmissionCount,
+              })}
+            </Badge>
+          )}
+        </Group>
       )}
     </>
   );

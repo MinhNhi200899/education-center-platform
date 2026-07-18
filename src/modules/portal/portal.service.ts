@@ -438,6 +438,16 @@ export class PortalService {
             fileSize: true,
           },
         },
+        homeworkSubmissions: {
+          where: { studentId },
+          select: {
+            id: true,
+            submittedAt: true,
+            feedback: true,
+            feedbackAt: true,
+          },
+          take: 1,
+        },
       },
     });
 
@@ -446,22 +456,29 @@ export class PortalService {
         const hasNotes = Boolean(s.notes?.trim());
         return hasNotes || s.materials.length > 0;
       })
-      .map((s) => ({
-        sessionId: s.id,
-        classId: s.classId,
-        className: s.class.name,
-        sessionDate: s.sessionDate,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        notes: s.notes?.trim() || null,
-        materials: s.materials.map((m) => ({
-          id: m.id,
-          fileUrl: m.fileUrl,
-          fileName: m.fileName,
-          fileType: m.fileType,
-          fileSize: m.fileSize,
-        })),
-      }));
+      .map((s) => {
+        const own = s.homeworkSubmissions[0] ?? null;
+        return {
+          sessionId: s.id,
+          classId: s.classId,
+          className: s.class.name,
+          sessionDate: s.sessionDate,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          notes: s.notes?.trim() || null,
+          materials: s.materials.map((m) => ({
+            id: m.id,
+            fileUrl: m.fileUrl,
+            fileName: m.fileName,
+            fileType: m.fileType,
+            fileSize: m.fileSize,
+          })),
+          submitted: Boolean(own),
+          hasFeedback: Boolean(own?.feedback?.trim()),
+          submittedAt: own?.submittedAt ?? null,
+          feedbackAt: own?.feedbackAt ?? null,
+        };
+      });
 
     return { items };
   }
@@ -541,6 +558,8 @@ export class PortalService {
             fileSize: submission.fileSize,
             note: submission.note,
             submittedAt: submission.submittedAt,
+            feedback: submission.feedback,
+            feedbackAt: submission.feedbackAt,
           }
         : null,
     };

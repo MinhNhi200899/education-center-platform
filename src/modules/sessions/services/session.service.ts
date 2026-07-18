@@ -423,6 +423,154 @@ export class SessionService {
     };
   }
 
+  /**
+   * List homework submissions for a session (enrolled students + submission/feedback state).
+   */
+  async listHomeworkSubmissions(sessionId: string, userId: string) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: { select: { id: true, name: true } },
+      },
+    });
+    if (!session) {
+      throw new NotFoundException('Session');
+    }
+
+    await this.assertTeacherCanAccessClass(userId, session.classId);
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: { classId: session.classId, status: 'active' },
+      include: { student: { select: { id: true, fullName: true } } },
+      orderBy: { student: { fullName: 'asc' } },
+    });
+
+    const submissions = await prisma.homeworkSubmission.findMany({
+      where: { sessionId },
+    });
+    const byStudent = new Map(submissions.map((s) => [s.studentId, s]));
+
+    const items = enrollments.map((e) => {
+      const sub = byStudent.get(e.studentId);
+      return {
+        studentId: e.student.id,
+        studentName: e.student.fullName,
+        submitted: Boolean(sub),
+        submission: sub
+          ? {
+              id: sub.id,
+              note: sub.note,
+              fileUrl: sub.fileUrl,
+              fileName: sub.fileName,
+              fileType: sub.fileType,
+              fileSize: sub.fileSize,
+              submittedAt: sub.submittedAt,
+              feedback: sub.feedback,
+              feedbackAt: sub.feedbackAt,
+            }
+          : null,
+      };
+    });
+
+    return {
+      sessionId: session.id,
+      classId: session.classId,
+      className: session.class.name,
+      sessionDate: session.sessionDate.toISOString().split('T')[0],
+      startTime: session.startTime,
+      endTime: session.endTime,
+      submittedCount: items.filter((i) => i.submitted).length,
+      totalStudents: items.length,
+      items,
+    };
+  }
+
+  /**
+   * Teacher writes text feedback on a student's homework submission.
+   */
+  async setHomeworkFeedback(
+    sessionId: string,
+    studentId: string,
+    userId: string,
+    feedback: string
+  ) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: { select: { id: true, name: true } },
+      },
+    });
+    if (!session) {
+      throw new NotFoundException('Session');
+    }
+
+    await this.assertTeacherCanAccessClass(userId, session.classId);
+
+    const text = feedback.trim();
+    if (!text) {
+      throw new ValidationException('Feedback is required');
+    }
+    if (text.length > 2000) {
+      throw new ValidationException('Feedback must not exceed 2000 characters');
+    }
+
+    const submission = await prisma.homeworkSubmission.findUnique({
+      where: { sessionId_studentId: { sessionId, studentId } },
+    });
+    if (!submission) {
+      throw new NotFoundException('Homework submission');
+    }
+
+    const updated = await prisma.homeworkSubmission.update({
+      where: { id: submission.id },
+      data: {
+        feedback: text,
+        feedbackAt: new Date(),
+        feedbackBy: userId,
+      },
+      include: {
+        student: { select: { id: true, fullName: true, userId: true } },
+      },
+    });
+
+    if (updated.student.userId) {
+      const dateStr = session.sessionDate.toISOString().split('T')[0];
+      await prisma.notification.create({
+        data: {
+          userId: updated.student.userId,
+          type: 'homework_feedback',
+          title: 'Giáo viên nhận xét bài tập',
+          message: `Có nhận xét mới cho buổi ${session.class.name} (${dateStr} ${session.startTime}).`,
+          data: {
+            sessionId,
+            studentId,
+            submissionId: updated.id,
+          },
+        },
+      });
+    }
+
+    logger.info('Homework feedback saved', {
+      sessionId,
+      studentId,
+      submissionId: updated.id,
+      feedbackBy: userId,
+    });
+
+    return {
+      id: updated.id,
+      sessionId: updated.sessionId,
+      studentId: updated.studentId,
+      studentName: updated.student.fullName,
+      note: updated.note,
+      fileUrl: updated.fileUrl,
+      fileName: updated.fileName,
+      submittedAt: updated.submittedAt,
+      feedback: updated.feedback,
+      feedbackAt: updated.feedbackAt,
+    };
+  }
+
   private extractDriveFileId(url: string): string | null {
     const match =
       url.match(/\/file\/d\/([^/]+)/) ||

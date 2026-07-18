@@ -72,7 +72,22 @@ export function NotificationBell() {
     }
 
     if (item.type === 'homework_submission' && !isStudentUser(user)) {
-      navigate('/teacher/schedule');
+      const sessionId = (item.data as { sessionId?: string; studentId?: string } | null)?.sessionId;
+      const studentId = (item.data as { studentId?: string } | null)?.studentId;
+      if (sessionId) {
+        const params = new URLSearchParams({ reviewSession: sessionId });
+        if (studentId) params.set('studentId', studentId);
+        navigate(`/teacher/schedule?${params.toString()}`);
+      } else {
+        navigate('/teacher/schedule');
+      }
+      return;
+    }
+
+    if (item.type === 'homework_feedback' && isStudentUser(user)) {
+      const sessionId = (item.data as { sessionId?: string } | null)?.sessionId;
+      if (sessionId) navigate(`/portal/homework?session=${sessionId}`);
+      else navigate('/portal/homework');
     }
   };
 

@@ -469,7 +469,12 @@ export class TeacherPortalService {
       orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       include: {
         class: { select: { id: true, name: true } },
-        _count: { select: { attendanceRecords: true } },
+        _count: {
+          select: {
+            attendanceRecords: true,
+            homeworkSubmissions: true,
+          },
+        },
       },
     });
 
@@ -509,6 +514,7 @@ export class TeacherPortalService {
         status: s.status,
         sessionType: s.sessionType,
         attendanceMarked: s._count.attendanceRecords > 0,
+        homeworkSubmissionCount: s._count.homeworkSubmissions,
         studentNames: studentsByClass.get(s.classId) ?? [],
       })),
     };

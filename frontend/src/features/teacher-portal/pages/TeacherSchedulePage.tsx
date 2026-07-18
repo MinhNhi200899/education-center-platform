@@ -11,12 +11,14 @@ import {
 } from '@dnd-kit/core';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { notifications } from '@mantine/notifications';
 import api from '@/lib/api';
 import { MonthlyTimeGrid } from '../components/schedule/MonthlyTimeGrid';
 import { AssignHomeworkModal } from '../components/schedule/AssignHomeworkModal';
 import { MarkAttendanceModal } from '../components/schedule/MarkAttendanceModal';
+import { ReviewHomeworkModal } from '../components/schedule/ReviewHomeworkModal';
 import { SessionBlock } from '../components/schedule/SessionBlock';
 import {
   CreateSessionModal,
@@ -42,12 +44,15 @@ import { getSessionPhase, canDragSession } from '../components/schedule/session-
 export function TeacherSchedulePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [weekStart, setWeekStart] = useState(() => getWeekStart());
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaults, setCreateDefaults] = useState<CreateSessionDefaults | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<TeacherScheduleSession | null>(null);
   const [assignTarget, setAssignTarget] = useState<TeacherScheduleSession | null>(null);
   const [attendanceTarget, setAttendanceTarget] = useState<TeacherScheduleSession | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<TeacherScheduleSession | null>(null);
+  const [reviewStudentId, setReviewStudentId] = useState<string | null>(null);
   const [localSessions, setLocalSessions] = useState<TeacherScheduleSession[]>([]);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [activeSession, setActiveSession] = useState<TeacherScheduleSession | null>(null);
@@ -88,6 +93,28 @@ export function TeacherSchedulePage() {
   useEffect(() => {
     setLocalSessions(sessionsFromApi);
   }, [sessionsFromApi]);
+
+  useEffect(() => {
+    const reviewSessionId = searchParams.get('reviewSession');
+    if (!reviewSessionId || localSessions.length === 0) return;
+    const found = localSessions.find((s) => s.id === reviewSessionId);
+    if (!found) return;
+    setReviewTarget(found);
+    setReviewStudentId(searchParams.get('studentId'));
+    setAssignTarget(null);
+    setAttendanceTarget(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('reviewSession');
+    next.delete('studentId');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, localSessions, setSearchParams]);
+
+  const openReview = (session: TeacherScheduleSession, studentId?: string | null) => {
+    setReviewTarget(session);
+    setReviewStudentId(studentId ?? null);
+    setAssignTarget(null);
+    setAttendanceTarget(null);
+  };
 
   const { data: classesData } = useQuery({
     queryKey: ['teacher-portal-classes'],
@@ -366,6 +393,7 @@ export function TeacherSchedulePage() {
         opened={!!assignTarget}
         onClose={() => setAssignTarget(null)}
         onSuccess={invalidateSchedule}
+        onOpenReview={() => assignTarget && openReview(assignTarget)}
       />
 
       <MarkAttendanceModal
@@ -373,6 +401,17 @@ export function TeacherSchedulePage() {
         opened={!!attendanceTarget}
         onClose={() => setAttendanceTarget(null)}
         onSuccess={handleAttendanceSuccess}
+        onOpenReview={() => attendanceTarget && openReview(attendanceTarget)}
+      />
+
+      <ReviewHomeworkModal
+        session={reviewTarget}
+        opened={!!reviewTarget}
+        initialStudentId={reviewStudentId}
+        onClose={() => {
+          setReviewTarget(null);
+          setReviewStudentId(null);
+        }}
       />
     </Stack>
   );

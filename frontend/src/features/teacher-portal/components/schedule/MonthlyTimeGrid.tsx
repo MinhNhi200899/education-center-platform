@@ -3,7 +3,7 @@ import { MonthPicker } from '@mantine/dates';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useDroppable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   dayOfWeekKey,
   formatMonthLabel,
@@ -18,6 +18,11 @@ import {
   slotHeightPx,
   slotMinutesList,
   buildSlotId,
+  resolveCreateSlotRange,
+  sessionHeightPx,
+  sessionTopPx,
+  yOffsetToSlotMinutes,
+  type CreateSlotDraft,
   type TeacherScheduleSession,
 } from './schedule-utils';
 import { SessionBlock } from './SessionBlock';
@@ -49,20 +54,83 @@ function DayColumn({
   date,
   sessions,
   savingIds,
+  isDraggingSession,
   onDeleteSession,
   onSelectSession,
+  onCreateSlot,
   columnRef,
 }: {
   date: string;
   sessions: TeacherScheduleSession[];
   savingIds: Set<string>;
+  isDraggingSession?: boolean;
   onDeleteSession: (session: TeacherScheduleSession) => void;
   onSelectSession: (session: TeacherScheduleSession) => void;
+  onCreateSlot?: (draft: CreateSlotDraft) => void;
   columnRef?: (el: HTMLDivElement | null) => void;
 }) {
   const { t } = useTranslation();
   const weekend = isWeekend(date);
   const today = isToday(date);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const selectingRef = useRef(false);
+  const draftRef = useRef<{ anchor: number; current: number } | null>(null);
+  const [draft, setDraft] = useState<{ anchor: number; current: number } | null>(null);
+
+  const minutesFromEvent = (e: ReactPointerEvent) => {
+    const rect = gridRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return yOffsetToSlotMinutes(e.clientY - rect.top);
+  };
+
+  const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!onCreateSlot || isDraggingSession || e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-session-block]')) return;
+
+    const minutes = minutesFromEvent(e);
+    if (minutes == null) return;
+
+    selectingRef.current = true;
+    const next = { anchor: minutes, current: minutes };
+    draftRef.current = next;
+    setDraft(next);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!selectingRef.current || !draftRef.current) return;
+    const minutes = minutesFromEvent(e);
+    if (minutes == null) return;
+    const next = { ...draftRef.current, current: minutes };
+    draftRef.current = next;
+    setDraft(next);
+  };
+
+  const finishSelection = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!selectingRef.current) return;
+    selectingRef.current = false;
+
+    const draftValue = draftRef.current;
+    draftRef.current = null;
+    setDraft(null);
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+
+    if (!onCreateSlot || !draftValue) return;
+
+    const minutes = minutesFromEvent(e) ?? draftValue.current;
+    const range = resolveCreateSlotRange(draftValue.anchor, minutes);
+    onCreateSlot({ date, startTime: range.startTime, endTime: range.endTime });
+  };
+
+  const preview =
+    draft != null ? resolveCreateSlotRange(draft.anchor, draft.current) : null;
 
   return (
     <Paper
@@ -100,10 +168,44 @@ function DayColumn({
           </Text>
         )}
       </Box>
-      <Box pos="relative" style={{ height: gridTotalHeightPx() }}>
+      <Box
+        ref={gridRef}
+        pos="relative"
+        style={{
+          height: gridTotalHeightPx(),
+          cursor: onCreateSlot && !isDraggingSession ? 'crosshair' : undefined,
+          userSelect: draft ? 'none' : undefined,
+          touchAction: onCreateSlot ? 'none' : undefined,
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishSelection}
+        onPointerCancel={finishSelection}
+      >
         {slotMinutesList().map((minutes) => (
           <TimeSlot key={minutes} date={date} startMinutes={minutes} />
         ))}
+        {preview && (
+          <Box
+            style={{
+              position: 'absolute',
+              top: sessionTopPx(preview.startTime),
+              height: sessionHeightPx(preview.startTime, preview.endTime),
+              left: 2,
+              right: 2,
+              background: 'var(--mantine-color-blue-2)',
+              border: '1px solid var(--mantine-color-blue-5)',
+              borderRadius: 6,
+              zIndex: 1,
+              pointerEvents: 'none',
+              opacity: 0.9,
+            }}
+          >
+            <Text size="xs" fw={600} c="blue.8" px={4} pt={2} lineClamp={1}>
+              {preview.startTime}–{preview.endTime}
+            </Text>
+          </Box>
+        )}
         {sessions.map((s) => (
           <SessionBlock
             key={s.id}
@@ -122,8 +224,10 @@ interface Props {
   monthStart: string;
   sessions: TeacherScheduleSession[];
   savingIds: Set<string>;
+  isDraggingSession?: boolean;
   onDeleteSession: (session: TeacherScheduleSession) => void;
   onSelectSession: (session: TeacherScheduleSession) => void;
+  onCreateSlot?: (draft: CreateSlotDraft) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onMonthSelect: (monthStart: string) => void;
@@ -133,8 +237,10 @@ export function MonthlyTimeGrid({
   monthStart,
   sessions,
   savingIds,
+  isDraggingSession,
   onDeleteSession,
   onSelectSession,
+  onCreateSlot,
   onPrevMonth,
   onNextMonth,
   onMonthSelect,
@@ -240,8 +346,10 @@ export function MonthlyTimeGrid({
               date={date}
               sessions={sessions.filter((s) => s.sessionDate === date)}
               savingIds={savingIds}
+              isDraggingSession={isDraggingSession}
               onDeleteSession={onDeleteSession}
               onSelectSession={onSelectSession}
+              onCreateSlot={onCreateSlot}
               columnRef={isToday(date) ? (el) => { todayRef.current = el; } : undefined}
             />
           ))}

@@ -21,11 +21,12 @@ import { SessionBlock } from '../components/schedule/SessionBlock';
 import {
   CreateSessionModal,
   formatSessionDateForApi,
+  type CreateSessionDefaults,
   type CreateSessionFormValues,
   type TeacherClassOption,
 } from '../components/schedule/CreateSessionModal';
 import { DeleteSessionModal } from '../components/schedule/DeleteSessionModal';
-import type { TeacherScheduleSession } from '../components/schedule/schedule-utils';
+import type { CreateSlotDraft, TeacherScheduleSession } from '../components/schedule/schedule-utils';
 import {
   computeMoveFromSlot,
   getMonthStart,
@@ -40,6 +41,7 @@ export function TeacherSchedulePage() {
   const queryClient = useQueryClient();
   const [monthStart, setMonthStart] = useState(() => getMonthStart());
   const [createOpen, setCreateOpen] = useState(false);
+  const [createDefaults, setCreateDefaults] = useState<CreateSessionDefaults | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<TeacherScheduleSession | null>(null);
   const [assignTarget, setAssignTarget] = useState<TeacherScheduleSession | null>(null);
   const [attendanceTarget, setAttendanceTarget] = useState<TeacherScheduleSession | null>(null);
@@ -116,6 +118,7 @@ export function TeacherSchedulePage() {
         color: 'green',
       });
       setCreateOpen(false);
+      setCreateDefaults(undefined);
       invalidateSchedule();
     },
     onError: (err: { response?: { data?: { error?: { message?: string } } } }) => {
@@ -236,6 +239,24 @@ export function TeacherSchedulePage() {
     setAssignTarget(session);
   };
 
+  const openCreateModal = (defaults?: CreateSessionDefaults) => {
+    setCreateDefaults(defaults);
+    setCreateOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    setCreateOpen(false);
+    setCreateDefaults(undefined);
+  };
+
+  const handleCreateSlot = (draft: CreateSlotDraft) => {
+    openCreateModal({
+      sessionDate: draft.date,
+      startTime: draft.startTime,
+      endTime: draft.endTime,
+    });
+  };
+
   const classes = classesData ?? [];
 
   return (
@@ -255,7 +276,7 @@ export function TeacherSchedulePage() {
         </div>
         <Button
           leftSection={<IconPlus size={16} />}
-          onClick={() => setCreateOpen(true)}
+          onClick={() => openCreateModal()}
           disabled={classes.length === 0}
         >
           {t('portal.teacher.schedule.addSession')}
@@ -278,8 +299,10 @@ export function TeacherSchedulePage() {
               monthStart={monthStart}
               sessions={localSessions}
               savingIds={savingIds}
+              isDraggingSession={!!activeSession}
               onDeleteSession={setDeleteTarget}
               onSelectSession={handleSelectSession}
+              onCreateSlot={handleCreateSlot}
               onPrevMonth={() => setMonthStart(shiftMonth(monthStart, -1))}
               onNextMonth={() => setMonthStart(shiftMonth(monthStart, 1))}
               onMonthSelect={setMonthStart}
@@ -300,9 +323,10 @@ export function TeacherSchedulePage() {
 
       <CreateSessionModal
         opened={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeCreateModal}
         classes={classes}
-        defaultDate={monthStart}
+        defaultDate={createDefaults?.sessionDate ?? monthStart}
+        defaults={createDefaults}
         loading={createMutation.isPending}
         onSubmit={(values) => createMutation.mutate(values)}
       />

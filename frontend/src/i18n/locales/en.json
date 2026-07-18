@@ -1063,7 +1063,7 @@
         "room": "Room: {{room}}",
         "addSession": "Add session",
         "dragHint": "Only upcoming sessions (blue) can be dragged — past or in-progress sessions stay fixed.",
-        "clickHint": "Upcoming sessions: click to assign homework. After session starts: click to mark attendance.",
+        "clickHint": "Click or drag an empty slot to create a session. Upcoming: click to assign homework. After start: click to mark attendance.",
         "sessionInProgressTitle": "Session in progress",
         "sessionInProgress": "Attendance is only available after the session ends.",
         "noClasses": "No classes assigned — cannot create sessions.",

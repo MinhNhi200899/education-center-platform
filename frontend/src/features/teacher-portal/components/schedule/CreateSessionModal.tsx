@@ -1,5 +1,5 @@
 import { Modal, Stack, Select, TextInput, Button, Group, Text } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
+import { DatePickerInput, TimeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,11 +20,19 @@ export interface CreateSessionFormValues {
   notes: string;
 }
 
+export interface CreateSessionDefaults {
+  sessionDate?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
 interface Props {
   opened: boolean;
   onClose: () => void;
   classes: TeacherClassOption[];
   defaultDate?: string;
+  /** Prefill from grid click/drag selection; overrides defaultDate/times when set. */
+  defaults?: CreateSessionDefaults;
   loading?: boolean;
   onSubmit: (values: CreateSessionFormValues) => void;
 }
@@ -38,6 +46,7 @@ export function CreateSessionModal({
   onClose,
   classes,
   defaultDate,
+  defaults,
   loading,
   onSubmit,
 }: Props) {
@@ -69,17 +78,17 @@ export function CreateSessionModal({
 
   useEffect(() => {
     if (!opened) return;
-    const initialDate = getInitialDate(defaultDate);
+    const initialDate = getInitialDate(defaults?.sessionDate ?? defaultDate);
     form.setValues({
       classId: classes[0]?.classId ?? '',
       sessionDates: [initialDate],
-      startTime: '09:00',
-      endTime: '10:30',
+      startTime: defaults?.startTime ?? '09:00',
+      endTime: defaults?.endTime ?? '10:30',
       classroom: classes[0]?.classroom ?? '',
       notes: '',
     });
     form.clearErrors();
-  }, [opened, defaultDate, classes]);
+  }, [opened, defaultDate, defaults, classes]);
 
   const handleClassChange = (classId: string | null) => {
     if (!classId) return;
@@ -134,15 +143,13 @@ export function CreateSessionModal({
             </Text>
           )}
           <Group grow>
-            <TextInput
+            <TimeInput
               label={t('portal.teacher.schedule.create.startTime')}
-              placeholder="09:00"
               {...form.getInputProps('startTime')}
               required
             />
-            <TextInput
+            <TimeInput
               label={t('portal.teacher.schedule.create.endTime')}
-              placeholder="10:30"
               {...form.getInputProps('endTime')}
               required
             />

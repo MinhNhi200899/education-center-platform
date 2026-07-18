@@ -1067,7 +1067,7 @@
         "room": "Phòng: {{room}}",
         "addSession": "Thêm buổi dạy",
         "dragHint": "Chỉ kéo thả buổi Sắp học (xanh dương) — buổi đã/đang học không di chuyển được.",
-        "clickHint": "Buổi sắp tới: click để giao bài. Buổi đã bắt đầu: click để điểm danh.",
+        "clickHint": "Click hoặc kéo ô trống để tạo buổi dạy. Buổi sắp tới: click để giao bài. Buổi đã bắt đầu: click để điểm danh.",
         "sessionInProgressTitle": "Buổi đang diễn ra",
         "sessionInProgress": "Chỉ điểm danh được sau khi buổi học kết thúc.",
         "noClasses": "Chưa được phân công lớp — không thể tạo buổi dạy.",

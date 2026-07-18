@@ -80,6 +80,7 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
   return (
     <Box
       ref={isOverlay ? undefined : setNodeRef}
+      data-session-block
       style={{
         ...style,
         borderRadius: 6,

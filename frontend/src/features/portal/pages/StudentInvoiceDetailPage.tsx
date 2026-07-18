@@ -12,11 +12,19 @@ import {
   Tooltip,
   Divider,
   Alert,
+  Modal,
+  ThemeIcon,
 } from '@mantine/core';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { IconArrowLeft, IconCopy, IconCheck, IconQrcode } from '@tabler/icons-react';
-import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  IconArrowLeft,
+  IconCopy,
+  IconCheck,
+  IconQrcode,
+  IconCircleCheck,
+} from '@tabler/icons-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocaleFormatters } from '@/lib/format';
 import api from '@/lib/api';
@@ -25,6 +33,9 @@ export function StudentInvoiceDetailPage() {
   const { t } = useTranslation();
   const { formatDate, formatVnd } = useLocaleFormatters();
   const { id } = useParams();
+  const queryClient = useQueryClient();
+  const [successOpen, setSuccessOpen] = useState(false);
+  const prevStatusRef = useRef<string | null>(null);
 
   const STATUS = useMemo(
     () => ({
@@ -64,9 +75,34 @@ export function StudentInvoiceDetailPage() {
     enabled: !!id,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'issued' || status === 'overdue' ? 15_000 : false;
+      return status === 'issued' || status === 'overdue' ? 5_000 : false;
     },
   });
+
+  useEffect(() => {
+    prevStatusRef.current = null;
+    setSuccessOpen(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (!invoice) return;
+    const prev = prevStatusRef.current;
+    const curr = invoice.status;
+
+    if (
+      curr === 'paid' &&
+      prev !== null &&
+      prev !== 'paid' &&
+      (prev === 'issued' || prev === 'overdue')
+    ) {
+      setSuccessOpen(true);
+      queryClient.invalidateQueries({ queryKey: ['portal-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['portal-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    }
+
+    prevStatusRef.current = curr;
+  }, [invoice, queryClient]);
 
   const st = invoice
     ? STATUS[invoice.status as keyof typeof STATUS] ?? { label: invoice.status, color: 'gray' }
@@ -121,7 +157,7 @@ export function StudentInvoiceDetailPage() {
             <Text>
               {t('portal.student.invoiceDetail.paid')} {formatVnd(invoice.paidAmount)}
             </Text>
-            <Text c="orange" fw={600}>
+            <Text c={invoice.status === 'paid' ? 'teal' : 'orange'} fw={600}>
               {t('portal.student.invoiceDetail.remaining')} {formatVnd(invoice.amountDue)}
             </Text>
           </Stack>
@@ -184,6 +220,38 @@ export function StudentInvoiceDetailPage() {
           )}
         </Paper>
       )}
+
+      <Modal
+        opened={successOpen}
+        onClose={() => setSuccessOpen(false)}
+        centered
+        radius="md"
+        withCloseButton={false}
+        padding="xl"
+      >
+        <Stack align="center" gap="md">
+          <ThemeIcon size={64} radius="xl" color="teal" variant="light">
+            <IconCircleCheck size={40} />
+          </ThemeIcon>
+          <Title order={3} ta="center">
+            {t('portal.student.invoiceDetail.successPopupTitle')}
+          </Title>
+          <Text ta="center" c="dimmed" size="sm">
+            {t('portal.student.invoiceDetail.successPopupMessage', {
+              amount: invoice ? formatVnd(invoice.totalAmount) : '',
+              number: invoice?.invoiceNumber ?? '',
+            })}
+          </Text>
+          <Group mt="sm" grow w="100%">
+            <Button variant="default" onClick={() => setSuccessOpen(false)}>
+              {t('portal.student.invoiceDetail.successStay')}
+            </Button>
+            <Button component={Link} to="/portal/tuition" onClick={() => setSuccessOpen(false)}>
+              {t('portal.student.invoiceDetail.successBack')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

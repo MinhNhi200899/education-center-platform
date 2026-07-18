@@ -149,3 +149,42 @@ export function isSameSlot(
     session.endTime === endTime
   );
 }
+
+/** Default duration when clicking a single empty slot (matches form default 09:00–10:30). */
+export const DEFAULT_CREATE_DURATION_MINUTES = 90;
+
+export interface CreateSlotDraft {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+/** Map Y offset within a day column's time grid to a snapped slot start (minutes from midnight). */
+export function yOffsetToSlotMinutes(offsetY: number): number {
+  const slotH = slotHeightPx();
+  const slotIndex = Math.floor(Math.max(0, offsetY) / slotH);
+  const minutes = GRID_START_HOUR * 60 + slotIndex * SLOT_MINUTES;
+  const maxStart = GRID_END_HOUR * 60 - SLOT_MINUTES;
+  return Math.min(Math.max(minutes, GRID_START_HOUR * 60), maxStart);
+}
+
+/**
+ * Resolve create range from pointer selection.
+ * Same slot (click) → default 90 minutes; drag across slots → inclusive range (min 30 min).
+ */
+export function resolveCreateSlotRange(
+  anchorMinutes: number,
+  currentMinutes: number
+): { startTime: string; endTime: string } {
+  if (anchorMinutes === currentMinutes) {
+    const start = anchorMinutes;
+    const end = Math.min(start + DEFAULT_CREATE_DURATION_MINUTES, GRID_END_HOUR * 60);
+    return { startTime: minutesToTime(start), endTime: minutesToTime(end) };
+  }
+  const start = Math.min(anchorMinutes, currentMinutes);
+  const end = Math.min(
+    Math.max(anchorMinutes, currentMinutes) + SLOT_MINUTES,
+    GRID_END_HOUR * 60
+  );
+  return { startTime: minutesToTime(start), endTime: minutesToTime(end) };
+}

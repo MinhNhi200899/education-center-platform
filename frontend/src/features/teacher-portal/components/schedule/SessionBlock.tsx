@@ -40,19 +40,6 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
     ? 'var(--mantine-color-orange-4)'
     : `var(--mantine-color-${displayColor}-4)`;
 
-  const style: CSSProperties = {
-    position: isOverlay ? 'relative' : 'absolute',
-    top: isOverlay ? undefined : top,
-    left: isOverlay ? undefined : 2,
-    right: isOverlay ? undefined : 2,
-    width: isOverlay ? 100 : undefined,
-    height: Math.max(height, 32),
-    zIndex: isDragging || isOverlay ? 30 : 2,
-    transform: isOverlay ? undefined : CSS.Translate.toString(transform),
-    opacity: isDragging && !isOverlay ? 0.35 : 1,
-    pointerEvents: isOverlay ? 'none' : 'auto',
-  };
-
   const phaseLabel =
     phase === 'upcoming'
       ? t('portal.teacher.schedule.phase.upcoming')
@@ -94,40 +81,27 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
       t('portal.teacher.schedule.noStudentsTooltip')
     );
 
-  const block = (
-    <Box
-      ref={isOverlay ? undefined : setNodeRef}
-      data-session-block
-      style={{
-        ...style,
-        borderRadius: 6,
-        border: `2px solid ${borderColor}`,
-        background: `var(--mantine-color-${displayColor}-0)`,
-        padding: '3px 5px',
-        cursor: isOverlay
-          ? 'grabbing'
-          : phase === 'cancelled'
-            ? 'not-allowed'
-            : draggable
-              ? 'grab'
-              : 'pointer',
-        overflow: 'hidden',
-        boxShadow: isOverlay ? '0 8px 24px rgba(0,0,0,0.18)' : undefined,
-      }}
-      {...(isOverlay ? {} : attributes)}
-      onPointerDown={(e) => {
-        if (isOverlay || phase === 'cancelled') return;
-        pointerStart.current = { x: e.clientX, y: e.clientY };
-        if (draggable) listeners?.onPointerDown?.(e);
-      }}
-      onClick={(e) => {
-        if (isOverlay || !onSelect || !pointerStart.current || phase === 'cancelled') return;
-        const dx = Math.abs(e.clientX - pointerStart.current.x);
-        const dy = Math.abs(e.clientY - pointerStart.current.y);
-        pointerStart.current = null;
-        if (dx < 6 && dy < 6) onSelect(session);
-      }}
-    >
+  const cardStyle: CSSProperties = {
+    width: '100%',
+    height: '100%',
+    borderRadius: 6,
+    border: `2px solid ${borderColor}`,
+    background: `var(--mantine-color-${displayColor}-0)`,
+    padding: '3px 5px',
+    cursor: isOverlay
+      ? 'grabbing'
+      : phase === 'cancelled'
+        ? 'not-allowed'
+        : draggable
+          ? 'grab'
+          : 'pointer',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+    boxShadow: isOverlay ? '0 8px 24px rgba(0,0,0,0.18)' : undefined,
+  };
+
+  const cardBody = (
+    <>
       <Group justify="space-between" wrap="nowrap" gap={2}>
         <Text size="xs" fw={700} lineClamp={1} style={{ flex: 1 }}>
           {session.className}
@@ -156,22 +130,58 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
           {badgeLabel}
         </Badge>
       )}
-    </Box>
+    </>
   );
 
-  if (isOverlay || isDragging) return block;
+  if (isOverlay) {
+    return (
+      <Box style={{ position: 'relative', width: 100, height: Math.max(height, 32), ...cardStyle }}>
+        {cardBody}
+      </Box>
+    );
+  }
 
   return (
-    <Tooltip
-      label={tooltipLabel}
-      withArrow
-      multiline
-      openDelay={350}
-      position="right"
-      maw={240}
-      events={{ hover: true, focus: false, touch: true }}
+    <Box
+      ref={setNodeRef}
+      data-session-block
+      style={{
+        position: 'absolute',
+        top,
+        left: 2,
+        right: 2,
+        height: Math.max(height, 32),
+        zIndex: isDragging ? 30 : 2,
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.35 : 1,
+      }}
+      {...attributes}
+      onPointerDown={(e) => {
+        if (phase === 'cancelled') return;
+        pointerStart.current = { x: e.clientX, y: e.clientY };
+        if (draggable) listeners?.onPointerDown?.(e);
+      }}
+      onClick={(e) => {
+        if (!onSelect || !pointerStart.current || phase === 'cancelled') return;
+        const dx = Math.abs(e.clientX - pointerStart.current.x);
+        const dy = Math.abs(e.clientY - pointerStart.current.y);
+        pointerStart.current = null;
+        if (dx < 6 && dy < 6) onSelect(session);
+      }}
     >
-      {block}
-    </Tooltip>
+      <Tooltip
+        label={tooltipLabel}
+        withArrow
+        multiline
+        withinPortal
+        openDelay={350}
+        position="right"
+        maw={240}
+        disabled={isDragging}
+        events={{ hover: true, focus: false, touch: true }}
+      >
+        <Box style={cardStyle}>{cardBody}</Box>
+      </Tooltip>
+    </Box>
   );
 }

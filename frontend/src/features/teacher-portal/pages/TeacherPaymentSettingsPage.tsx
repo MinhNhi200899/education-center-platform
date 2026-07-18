@@ -172,7 +172,7 @@ export function TeacherPaymentSettingsPage() {
             <Text size="sm" c="dimmed" ta="center">
               {form.values.accountName} · {form.values.accountNo}
             </Text>
-            <Image src={previewUrl} alt="SePay QR" w={220} radius="md" />
+            <Image src={previewUrl} alt="VietQR via SePay" w={220} radius="md" />
             <Text size="xs" c="dimmed" ta="center">
               {t('portal.teacher.payments.qrHint')}
             </Text>

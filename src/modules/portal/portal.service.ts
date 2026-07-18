@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '../../shared/types/error.types';
 import { uploadHomeworkFile } from '../../shared/services/homework-upload.service';
+import { paymentService } from '../payments/services/payment.service';
 
 export class PortalService {
   private async resolveStudentId(userId: string): Promise<string> {
@@ -215,7 +216,32 @@ export class PortalService {
       where: { id: invoiceId, studentId },
       include: {
         student: { select: { id: true, fullName: true } },
-        center: { select: { id: true, name: true } },
+        center: { select: { id: true, name: true, settings: true } },
+        tuitionPlan: {
+          select: {
+            classId: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+                teachers: {
+                  orderBy: { role: 'asc' },
+                  include: {
+                    teacher: {
+                      select: {
+                        id: true,
+                        fullName: true,
+                        vietqrBankId: true,
+                        accountNo: true,
+                        accountName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -223,17 +249,82 @@ export class PortalService {
       throw new NotFoundException('Invoice');
     }
 
+    const amountDue = Number(invoice.totalAmount) - Number(invoice.paidAmount ?? 0);
+    const unpaid = ['issued', 'overdue'].includes(invoice.status) && amountDue > 0;
+
+    let paymentQr: {
+      qrCodeUrl: string;
+      amount: number;
+      receiverName: string;
+      receiverBank: string;
+      receiverAccount: string;
+      description: string;
+      teacherName: string | null;
+      className: string | null;
+    } | null = null;
+
+    if (unpaid) {
+      const classTeachers = invoice.tuitionPlan.class?.teachers ?? [];
+      const teacherWithBank =
+        classTeachers.find((ct) => ct.teacher.accountNo && ct.teacher.vietqrBankId)?.teacher ??
+        classTeachers[0]?.teacher ??
+        null;
+
+      const centerSettings =
+        (invoice.center.settings as Record<string, string> | null) ?? {};
+
+      const bankAccount =
+        teacherWithBank?.accountNo ||
+        centerSettings.accountNo ||
+        centerSettings.vietqrBankAccount ||
+        '';
+      const bankCode =
+        teacherWithBank?.vietqrBankId ||
+        centerSettings.vietqrBankId ||
+        centerSettings.vietqrBankCode ||
+        '';
+      const receiverName =
+        teacherWithBank?.accountName ||
+        centerSettings.accountName ||
+        centerSettings.vietqrAccountName ||
+        teacherWithBank?.fullName ||
+        invoice.center.name;
+
+      if (bankAccount && bankCode) {
+        const vietqr = await paymentService.generateVietQR({
+          invoiceId: invoice.id,
+          amount: amountDue,
+          description: invoice.invoiceNumber,
+          bankCode,
+          bankAccount,
+          receiverName,
+        });
+
+        paymentQr = {
+          qrCodeUrl: vietqr.qrCodeUrl,
+          amount: vietqr.amount,
+          receiverName: vietqr.receiverName,
+          receiverBank: vietqr.receiverBank,
+          receiverAccount: vietqr.receiverAccount,
+          description: vietqr.description,
+          teacherName: teacherWithBank?.fullName ?? null,
+          className: invoice.tuitionPlan.class?.name ?? null,
+        };
+      }
+    }
+
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       totalAmount: Number(invoice.totalAmount),
       paidAmount: Number(invoice.paidAmount),
-      amountDue: Number(invoice.totalAmount) - Number(invoice.paidAmount ?? 0),
+      amountDue,
       dueDate: invoice.dueDate,
       issueDate: invoice.issueDate,
       status: invoice.status,
       student: invoice.student,
-      center: invoice.center,
+      center: { id: invoice.center.id, name: invoice.center.name },
+      paymentQr,
     };
   }
 

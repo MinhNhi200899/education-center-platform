@@ -1001,7 +1001,18 @@
         "total": "Tổng:",
         "paid": "Đã thanh toán:",
         "remaining": "Còn lại:",
-        "intro": "Vui lòng thanh toán học phí trước hạn. Bấm nút bên dưới để thanh toán qua ứng dụng ngân hàng hoặc ví điện tử."
+        "intro": "Vui lòng thanh toán học phí trước hạn. Quét mã QR bên dưới hoặc chuyển khoản đúng nội dung.",
+        "qrTitle": "Quét QR để thanh toán",
+        "qrHint": "Quét bằng app ngân hàng. Hệ thống tự nhận tiền qua SePay khi chuyển đúng số tiền và nội dung.",
+        "teacher": "GV {{name}}",
+        "bank": "Ngân hàng",
+        "account": "Số tài khoản",
+        "receiver": "Chủ tài khoản",
+        "amount": "Số tiền",
+        "transferContent": "Nội dung chuyển khoản",
+        "noQr": "Chưa cấu hình tài khoản nhận tiền của giáo viên. Liên hệ trung tâm/giáo viên.",
+        "paidTitle": "Đã thanh toán",
+        "paidMessage": "Phiếu thu này đã được thanh toán thành công."
       }
     },
     "teacher": {

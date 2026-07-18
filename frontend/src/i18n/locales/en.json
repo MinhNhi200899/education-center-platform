@@ -1001,7 +1001,18 @@
         "total": "Total:",
         "paid": "Paid:",
         "remaining": "Remaining:",
-        "intro": "Please pay the tuition before the due date. Click the button below to pay via your bank's app or e-wallet."
+        "intro": "Please pay before the due date. Scan the QR below or transfer with the exact content.",
+        "qrTitle": "Scan QR to pay",
+        "qrHint": "Scan with your banking app. SePay auto-detects payment when amount and transfer content match.",
+        "teacher": "Teacher {{name}}",
+        "bank": "Bank",
+        "account": "Account number",
+        "receiver": "Account holder",
+        "amount": "Amount",
+        "transferContent": "Transfer content",
+        "noQr": "Teacher payment account is not configured yet. Contact your center/teacher.",
+        "paidTitle": "Paid",
+        "paidMessage": "This invoice has been paid successfully."
       }
     },
     "teacher": {

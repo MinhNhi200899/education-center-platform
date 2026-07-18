@@ -1,7 +1,21 @@
-import { Stack, Title, Text, Paper, Group, Button, Badge } from '@mantine/core';
+import {
+  Stack,
+  Title,
+  Text,
+  Paper,
+  Group,
+  Button,
+  Badge,
+  Image,
+  CopyButton,
+  ActionIcon,
+  Tooltip,
+  Divider,
+  Alert,
+} from '@mantine/core';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconCopy, IconCheck, IconQrcode } from '@tabler/icons-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocaleFormatters } from '@/lib/format';
@@ -25,12 +39,40 @@ export function StudentInvoiceDetailPage() {
     queryKey: ['portal-invoice', id],
     queryFn: async () => {
       const res = await api.get(`/portal/invoices/${id}`);
-      return res.data.data;
+      return res.data.data as {
+        id: string;
+        invoiceNumber: string;
+        totalAmount: number;
+        paidAmount: number;
+        amountDue: number;
+        dueDate: string;
+        issueDate: string;
+        status: string;
+        student?: { fullName: string };
+        paymentQr?: {
+          qrCodeUrl: string;
+          amount: number;
+          receiverName: string;
+          receiverBank: string;
+          receiverAccount: string;
+          description: string;
+          teacherName: string | null;
+          className: string | null;
+        } | null;
+      };
     },
     enabled: !!id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'issued' || status === 'overdue' ? 15_000 : false;
+    },
   });
 
-  const st = invoice ? STATUS[invoice.status as keyof typeof STATUS] ?? { label: invoice.status, color: 'gray' } : null;
+  const st = invoice
+    ? STATUS[invoice.status as keyof typeof STATUS] ?? { label: invoice.status, color: 'gray' }
+    : null;
+  const qr = invoice?.paymentQr;
+  const showPay = qr && (invoice.status === 'issued' || invoice.status === 'overdue');
 
   return (
     <Stack gap="lg">
@@ -83,11 +125,97 @@ export function StudentInvoiceDetailPage() {
               {t('portal.student.invoiceDetail.remaining')} {formatVnd(invoice.amountDue)}
             </Text>
           </Stack>
-          <Text size="sm" c="dimmed" mt="lg">
-            {t('portal.student.invoiceDetail.intro')}
-          </Text>
+
+          {invoice.status === 'paid' ? (
+            <Alert color="green" mt="lg" radius="md" title={t('portal.student.invoiceDetail.paidTitle')}>
+              {t('portal.student.invoiceDetail.paidMessage')}
+            </Alert>
+          ) : showPay ? (
+            <>
+              <Divider my="lg" />
+              <Stack gap="md" align="center">
+                <Group gap="xs">
+                  <IconQrcode size={18} />
+                  <Text fw={600}>{t('portal.student.invoiceDetail.qrTitle')}</Text>
+                </Group>
+                {(qr.teacherName || qr.className) && (
+                  <Text size="sm" c="dimmed" ta="center">
+                    {qr.className ? `${qr.className}` : ''}
+                    {qr.teacherName
+                      ? ` · ${t('portal.student.invoiceDetail.teacher', { name: qr.teacherName })}`
+                      : ''}
+                  </Text>
+                )}
+                <Image src={qr.qrCodeUrl} alt="SePay QR" w={220} radius="md" />
+                <Text size="sm" c="dimmed" ta="center" maw={360}>
+                  {t('portal.student.invoiceDetail.qrHint')}
+                </Text>
+                <Paper withBorder p="md" radius="md" w="100%" maw={400}>
+                  <Stack gap="xs">
+                    <CopyRow
+                      label={t('portal.student.invoiceDetail.bank')}
+                      value={qr.receiverBank}
+                    />
+                    <CopyRow
+                      label={t('portal.student.invoiceDetail.account')}
+                      value={qr.receiverAccount}
+                    />
+                    <CopyRow
+                      label={t('portal.student.invoiceDetail.receiver')}
+                      value={qr.receiverName}
+                    />
+                    <CopyRow
+                      label={t('portal.student.invoiceDetail.amount')}
+                      value={formatVnd(qr.amount)}
+                    />
+                    <CopyRow
+                      label={t('portal.student.invoiceDetail.transferContent')}
+                      value={qr.description}
+                      highlight
+                    />
+                  </Stack>
+                </Paper>
+              </Stack>
+            </>
+          ) : (
+            <Alert color="orange" mt="lg" radius="md">
+              {t('portal.student.invoiceDetail.noQr')}
+            </Alert>
+          )}
         </Paper>
       )}
     </Stack>
+  );
+}
+
+function CopyRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <Group justify="space-between" wrap="nowrap" gap="xs">
+      <div style={{ minWidth: 0 }}>
+        <Text size="xs" c="dimmed">
+          {label}
+        </Text>
+        <Text size="sm" fw={highlight ? 700 : 500} style={{ wordBreak: 'break-all' }}>
+          {value}
+        </Text>
+      </div>
+      <CopyButton value={value} timeout={1500}>
+        {({ copied, copy }) => (
+          <Tooltip label={copied ? '✓' : 'Copy'} withArrow>
+            <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+              {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </CopyButton>
+    </Group>
   );
 }

@@ -2,7 +2,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import { BadRequestException } from '../types/error.types';
 
 const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 
 function isConfigured(): boolean {
   return Boolean(
@@ -10,6 +10,10 @@ function isConfigured(): boolean {
       process.env.CLOUDINARY_API_KEY &&
       process.env.CLOUDINARY_API_SECRET
   );
+}
+
+export function isCloudinaryConfigured(): boolean {
+  return isConfigured();
 }
 
 function getExtension(filename: string): string {
@@ -54,7 +58,7 @@ export async function uploadHomeworkDocument(
   }
 
   if (buffer.length > MAX_BYTES) {
-    throw new BadRequestException('File must be 10MB or smaller', 'FILE_TOO_LARGE');
+    throw new BadRequestException('File must be 50MB or smaller', 'FILE_TOO_LARGE');
   }
 
   const ext = getExtension(originalName);

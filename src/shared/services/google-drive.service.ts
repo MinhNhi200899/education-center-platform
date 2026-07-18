@@ -3,7 +3,7 @@ import { google, drive_v3 } from 'googleapis';
 import { BadRequestException } from '../types/error.types';
 
 const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 
 export interface DriveUploadedFile {
   url: string;
@@ -174,7 +174,7 @@ export async function uploadHomeworkToDrive(
   }
 
   if (buffer.length > MAX_BYTES) {
-    throw new BadRequestException('File must be 10MB or smaller', 'FILE_TOO_LARGE');
+    throw new BadRequestException('File must be 50MB or smaller', 'FILE_TOO_LARGE');
   }
 
   const ext = getExtension(originalName);
@@ -189,29 +189,56 @@ export async function uploadHomeworkToDrive(
   const mimeType = inferMimeType(ext);
   const opts = driveOptions(sharedDrive);
 
-  const created = await drive.files.create({
-    ...opts,
-    requestBody: {
-      name: originalName,
-      parents: [folderId],
-    },
-    media: {
-      mimeType,
-      body: Readable.from(buffer),
-    },
-    fields: 'id, webViewLink',
-  });
+  let created;
+  try {
+    created = await drive.files.create({
+      ...opts,
+      requestBody: {
+        name: originalName,
+        parents: [folderId],
+      },
+      media: {
+        mimeType,
+        body: Readable.from(buffer),
+      },
+      fields: 'id, webViewLink',
+    });
+  } catch (error: unknown) {
+    const gaxios = error as {
+      message?: string;
+      response?: { data?: { error?: { message?: string } } };
+    };
+    const detail =
+      gaxios.response?.data?.error?.message || gaxios.message || 'Upload failed';
+    throw new BadRequestException(
+      `Google Drive upload failed: ${detail}`,
+      'DRIVE_UPLOAD_FAILED'
+    );
+  }
 
   const fileId = created.data.id;
   if (!fileId) {
     throw new BadRequestException('Google Drive upload failed', 'DRIVE_UPLOAD_FAILED');
   }
 
-  await drive.permissions.create({
-    ...opts,
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
-  });
+  try {
+    await drive.permissions.create({
+      ...opts,
+      fileId,
+      requestBody: { role: 'reader', type: 'anyone' },
+    });
+  } catch (error: unknown) {
+    const gaxios = error as {
+      message?: string;
+      response?: { data?: { error?: { message?: string } } };
+    };
+    const detail =
+      gaxios.response?.data?.error?.message || gaxios.message || 'Permission failed';
+    throw new BadRequestException(
+      `Google Drive permission failed: ${detail}`,
+      'DRIVE_UPLOAD_FAILED'
+    );
+  }
 
   const url = created.data.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`;
 

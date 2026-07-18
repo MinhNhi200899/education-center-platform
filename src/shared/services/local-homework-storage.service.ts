@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException } from '../types/error.types';
 
 const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 const STORAGE_DIR = path.resolve(process.cwd(), 'storage', 'homework');
 
 export interface LocalUploadedFile {
@@ -38,7 +38,7 @@ export async function uploadHomeworkLocally(
   baseUrl: string
 ): Promise<LocalUploadedFile> {
   if (buffer.length > MAX_BYTES) {
-    throw new BadRequestException('File must be 10MB or smaller', 'FILE_TOO_LARGE');
+    throw new BadRequestException('File must be 50MB or smaller', 'FILE_TOO_LARGE');
   }
 
   const ext = getExtension(originalName);

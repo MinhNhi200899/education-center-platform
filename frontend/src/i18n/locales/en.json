@@ -95,6 +95,7 @@
       "password": "Password",
       "passwordPlaceholder": "Your password",
       "submit": "Sign In",
+      "rememberMe": "Remember me for 30 days",
       "failed": "Login failed. Please try again."
     },
     "logout": "Logout",
@@ -1077,7 +1078,7 @@
           "contentPlaceholder": "e.g. Complete exercises on page 12, review unit 3 vocabulary...",
           "fileLabel": "Attachment (PDF / Word / Excel)",
           "filePlaceholder": "Choose .pdf, .doc, .docx, .xls, .xlsx",
-          "fileHint": "Max 10MB. Uploads to Google Drive — students open the link to view Word/Excel/PDF.",
+          "fileHint": "Max 50MB. Uploads to Google Drive — students open the link to view Word/Excel/PDF.",
           "linkOptional": "Or paste an existing Drive link (optional)",
           "linkHint": "If you already uploaded to Drive manually, paste the link here instead of selecting a file.",
           "linkLabel": "Link",

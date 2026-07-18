@@ -95,6 +95,7 @@
       "password": "Mật khẩu",
       "passwordPlaceholder": "Mật khẩu của bạn",
       "submit": "Đăng nhập",
+      "rememberMe": "Ghi nhớ đăng nhập (30 ngày)",
       "failed": "Đăng nhập thất bại. Vui lòng thử lại."
     },
     "logout": "Đăng xuất",
@@ -1077,7 +1078,7 @@
           "contentPlaceholder": "VD: Làm bài tập trang 12, ôn từ vựng unit 3...",
           "fileLabel": "Tệp đính kèm (PDF / Word / Excel)",
           "filePlaceholder": "Chọn file .pdf, .doc, .docx, .xls, .xlsx",
-          "fileHint": "Tối đa 10MB. Upload lên Google Drive — học sinh mở link xem Word/Excel/PDF.",
+          "fileHint": "Tối đa 50MB. Upload lên Google Drive — học sinh mở link xem Word/Excel/PDF.",
           "linkOptional": "Hoặc dán link Drive có sẵn (tuỳ chọn)",
           "linkHint": "Nếu GV đã upload tay lên Drive, dán link vào đây thay vì chọn file.",
           "linkLabel": "Link",

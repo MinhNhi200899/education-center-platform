@@ -4,7 +4,7 @@ import multer from 'multer';
 
 import { authenticate } from '../auth/middleware/authenticate';
 
-import { requirePermission } from '../rbac/middleware/require-permission';
+import { requirePermission, requireAnyPermission } from '../rbac/middleware/require-permission';
 
 import { asyncHandler } from '../../shared/utils/async-handler';
 
@@ -32,7 +32,7 @@ const upload = multer({
 
   storage: multer.memoryStorage(),
 
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
 
 });
 
@@ -41,6 +41,10 @@ const upload = multer({
 router.get(
 
   '/homework/files/:storedName',
+
+  authenticate,
+
+  requireAnyPermission('sessions.read', 'sessions.update'),
 
   asyncHandler(async (req, res) => {
 
@@ -74,6 +78,8 @@ router.get(
 
 router.get(
   '/attendance-screenshot/files/:storedName',
+  authenticate,
+  requireAnyPermission('attendance.read', 'attendance.create', 'attendance.update'),
   asyncHandler(async (req, res) => {
     const storedName = decodeURIComponent(req.params.storedName);
     const filePath = getLocalAttendanceScreenshotPath(storedName);
@@ -141,6 +147,14 @@ router.post(
 
       return;
 
+    }
+
+    if (!req.file.buffer?.length) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Uploaded file is empty', code: 'EMPTY_FILE' },
+      });
+      return;
     }
 
 

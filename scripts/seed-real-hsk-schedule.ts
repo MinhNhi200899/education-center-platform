@@ -107,8 +107,8 @@ const CLASSES: ClassDef[] = [
       tuesday: [{ startTime: '19:30', endTime: '21:00', room: 'Offline' }],
       thursday: [{ startTime: '19:30', endTime: '21:00', room: 'Offline' }],
     },
-    // Dạy offline — chỉ tạo lớp/lịch cho GV Nhi quản lý, không tạo account học viên
-    students: [],
+    // Offline roster — Student rows without portal User accounts
+    students: ['Tuấn', 'Giang', 'Thúy', 'Khánh', 'Bin', 'Thu', 'Phương'],
     notes:
       'Offline T3/T5 19:30–21:00. Học viên (không có portal): Tuấn, Giang, Thúy, Khánh, Bin, Thu, Phương',
   },
@@ -144,6 +144,17 @@ const STUDENT_ACCOUNTS: Record<string, { email: string; password: string; gender
   My: { email: 'my.student@educationcenter.com', password: 'my1234567', gender: Gender.female },
   Thảo: { email: 'thao.student@educationcenter.com', password: 'thao12345', gender: Gender.female },
   Mai: { email: 'mai.student@educationcenter.com', password: 'mai123456', gender: Gender.female },
+};
+
+/** Offline students: roster only, no User / portal login */
+const OFFLINE_STUDENTS: Record<string, { gender: Gender }> = {
+  Tuấn: { gender: Gender.male },
+  Giang: { gender: Gender.female },
+  Thúy: { gender: Gender.female },
+  Khánh: { gender: Gender.male },
+  Bin: { gender: Gender.male },
+  Thu: { gender: Gender.female },
+  Phương: { gender: Gender.female },
 };
 
 const TEACHER_PERMISSIONS = [
@@ -397,18 +408,30 @@ function writeAccountMd(accounts: {
     '| Thứ 2 | 18:00 - 19:30 | HSK 2 | Thơ |',
     '|  | 20:00 - 21:30 | HSK 1 (Lớp 1) | Ngân, Châu, Linh |',
     '| Thứ 3 | 18:00 - 19:30 | HSK 1 (Lớp 2) | Ly, My |',
-    '|  | 19:30 - 21:00 | HSK 1 Offline | *(offline — không có account; GV Nhi quản lý)* |',
+    '|  | 19:30 - 21:00 | HSK 1 Offline | Tuấn, Giang, Thúy, Khánh, Bin, Thu, Phương *(offline)* |',
     '| Thứ 4 | 18:00 - 19:30 | HSK 2 | Thơ |',
     '|  | 21:30 - 23:00 | HSK 3 | Thảo |',
     '| Thứ 5 | 18:00 - 19:30 | HSK 1 (Lớp 2) | Ly, My |',
-    '|  | 19:30 - 21:00 | HSK 1 Offline | *(offline — không có account; GV Nhi quản lý)* |',
+    '|  | 19:30 - 21:00 | HSK 1 Offline | Tuấn, Giang, Thúy, Khánh, Bin, Thu, Phương *(offline)* |',
     '| Thứ 6 | 18:00 - 19:30 | HSK 2 | Thơ |',
     '|  | 20:00 - 21:30 | HSK 1 (Lớp 1) | Ngân, Châu, Linh |',
     '|  | 21:30 - 23:00 | HSK 3 | Thảo |',
     '| Thứ 7 | 15:00 - 18:00 | HSK 1 (Lớp 4) | Mai |',
     '|  | 18:00 - 19:30 | HSK 1 (Lớp 2) | Ly, My |',
     '',
-    '> Lớp **HSK 1 Offline** (T3/T5 19:30–21:00): Tuấn, Giang, Thúy, Khánh, Bin, Thu, Phương — dạy offline, không tạo tài khoản portal.',
+    '> Lớp **HSK 1 Offline** (T3/T5 19:30–21:00): Tuấn, Giang, Thúy, Khánh, Bin, Thu, Phương — có trong danh sách học sinh (không tài khoản portal).',
+    '',
+    '## Học viên offline (không đăng nhập)',
+    '',
+    `| Họ tên | Lớp |`,
+    `| ------ | --- |`,
+    `| Tuấn | HSK 1 Offline |`,
+    `| Giang | HSK 1 Offline |`,
+    `| Thúy | HSK 1 Offline |`,
+    `| Khánh | HSK 1 Offline |`,
+    `| Bin | HSK 1 Offline |`,
+    `| Thu | HSK 1 Offline |`,
+    `| Phương | HSK 1 Offline |`,
     ''
   );
 
@@ -501,6 +524,24 @@ async function main() {
       password: acct.password,
       classes: [],
     });
+  }
+
+  for (const [fullName, meta] of Object.entries(OFFLINE_STUDENTS)) {
+    const student = await prisma.student.create({
+      data: {
+        userId: null,
+        centerId: center.id,
+        fullName,
+        dateOfBirth: new Date('2012-01-01'),
+        gender: meta.gender,
+        email: null,
+        enrollmentDate,
+        status: StudentStatus.active,
+        loginPassword: null,
+        notes: 'Học viên offline — không có tài khoản portal',
+      },
+    });
+    studentIdByName.set(fullName, student.id);
   }
 
   const rangeStart = startOfMonth(new Date());

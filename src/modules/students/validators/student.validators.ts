@@ -6,42 +6,54 @@ export type Gender = z.infer<typeof genderEnum>;
 
 // Create student schema
 export const createStudentSchema = z.object({
-  body: z.object({
-    centerId: z.string().uuid('Invalid center ID'),
-    fullName: z
-      .string()
-      .min(2, 'Name must be at least 2 characters')
-      .max(100, 'Name must not exceed 100 characters'),
-    dateOfBirth: z
-      .string()
-      .transform((val) => new Date(val))
-      .refine((date) => !isNaN(date.getTime()), 'Invalid date format')
-      .refine((date) => date <= new Date(), 'Date of birth cannot be in the future')
-      .refine((date) => {
-        const age = (new Date().getTime() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-        return age >= 3 && age <= 25;
-      }, 'Age must be between 3 and 25 years'),
-    gender: genderEnum,
-    phone: z
-      .string()
-      .regex(/^(0[0-9]{9,10})$/, 'Invalid Vietnamese phone number')
-      .optional()
-      .or(z.literal('')),
-    email: z.string().email('Invalid email format'),
-    password: z
-      .string()
-      .min(8, 'Password must be at least 8 characters')
-      .optional()
-      .or(z.literal('')),
-    address: z.string().max(500).optional(),
-    avatarUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
-    enrollmentDate: z
-      .string()
-      .transform((val) => new Date(val))
-      .refine((date) => !isNaN(date.getTime()), 'Invalid enrollment date')
-      .refine((date) => date <= new Date(), 'Enrollment date cannot be in the future'),
-    notes: z.string().max(2000).optional(),
-  }),
+  body: z
+    .object({
+      centerId: z.string().uuid('Invalid center ID'),
+      fullName: z
+        .string()
+        .min(2, 'Name must be at least 2 characters')
+        .max(100, 'Name must not exceed 100 characters'),
+      dateOfBirth: z
+        .string()
+        .transform((val) => new Date(val))
+        .refine((date) => !isNaN(date.getTime()), 'Invalid date format')
+        .refine((date) => date <= new Date(), 'Date of birth cannot be in the future')
+        .refine((date) => {
+          const age = (new Date().getTime() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+          return age >= 3 && age <= 25;
+        }, 'Age must be between 3 and 25 years'),
+      gender: genderEnum,
+      phone: z
+        .string()
+        .regex(/^(0[0-9]{9,10})$/, 'Invalid Vietnamese phone number')
+        .optional()
+        .or(z.literal('')),
+      email: z.string().email('Invalid email format').optional().or(z.literal('')),
+      password: z
+        .string()
+        .min(8, 'Password must be at least 8 characters')
+        .optional()
+        .or(z.literal('')),
+      /** Roster-only: no portal User / login credentials */
+      isOffline: z.boolean().optional().default(false),
+      address: z.string().max(500).optional(),
+      avatarUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
+      enrollmentDate: z
+        .string()
+        .transform((val) => new Date(val))
+        .refine((date) => !isNaN(date.getTime()), 'Invalid enrollment date')
+        .refine((date) => date <= new Date(), 'Enrollment date cannot be in the future'),
+      notes: z.string().max(2000).optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (!data.isOffline && !data.email?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Email is required for portal students',
+          path: ['email'],
+        });
+      }
+    }),
 });
 
 // Update student schema

@@ -264,6 +264,10 @@ export function StudentListPage() {
                         )}
                       </CopyButton>
                     </Group>
+                  ) : student.hasPortalAccess === false ? (
+                    <Badge color="gray" variant="light">
+                      {t('students.list.table.offline')}
+                    </Badge>
                   ) : (
                     '-'
                   )}

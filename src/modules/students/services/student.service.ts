@@ -22,12 +22,20 @@ export class StudentService {
    * Create a new student
    */
   async create(data: CreateStudentDTO): Promise<CreateStudentResult> {
-    const { centerId, fullName, dateOfBirth, gender, phone, email, password, address, enrollmentDate, notes } = data;
-    const loginEmail = email?.trim().toLowerCase();
-
-    if (!loginEmail) {
-      throw new BadRequestException('Email is required to create a student login account', 'EMAIL_REQUIRED');
-    }
+    const {
+      centerId,
+      fullName,
+      dateOfBirth,
+      gender,
+      phone,
+      email,
+      password,
+      isOffline = false,
+      address,
+      enrollmentDate,
+      notes,
+    } = data;
+    const loginEmail = email?.trim().toLowerCase() || null;
 
     // Check center exists
     const center = await prisma.center.findUnique({ where: { id: centerId } });
@@ -49,6 +57,37 @@ export class StudentService {
         'A student with this name and enrollment date already exists',
         'DUPLICATE_STUDENT'
       );
+    }
+
+    // Offline / roster-only: no User account, no login credentials
+    if (isOffline) {
+      const student = await prisma.student.create({
+        data: {
+          userId: null,
+          centerId,
+          fullName,
+          dateOfBirth: new Date(dateOfBirth),
+          gender,
+          phone: phone || null,
+          email: loginEmail,
+          address: address || null,
+          enrollmentDate: new Date(enrollmentDate),
+          notes: notes || null,
+          loginPassword: null,
+          status: StudentStatus.active,
+        },
+        include: {
+          center: { select: { id: true, name: true, code: true } },
+        },
+      });
+
+      logger.info('Offline student created', { studentId: student.id, centerId });
+
+      return this.formatStudent(student);
+    }
+
+    if (!loginEmail) {
+      throw new BadRequestException('Email is required to create a student login account', 'EMAIL_REQUIRED');
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email: loginEmail } });
@@ -558,6 +597,7 @@ export class StudentService {
       status: student.status,
       notes: student.notes,
       loginPassword: student.loginPassword ?? null,
+      hasPortalAccess: !!student.userId,
       centerId: student.centerId,
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,

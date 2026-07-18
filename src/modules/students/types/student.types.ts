@@ -10,6 +10,8 @@ export interface CreateStudentDTO {
   phone?: string;
   email?: string;
   password?: string;
+  /** When true, create roster-only student (no portal login / User account). */
+  isOffline?: boolean;
   address?: string;
   avatarUrl?: string;
   enrollmentDate: Date | string;
@@ -56,6 +58,8 @@ export interface StudentResponse {
   status: StudentStatus;
   notes: string | null;
   loginPassword?: string | null;
+  /** False when student has no portal User (offline / roster-only). */
+  hasPortalAccess?: boolean;
   centerId: string;
   createdAt: Date;
   updatedAt: Date;

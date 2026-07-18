@@ -40,6 +40,8 @@ export interface Student {
   status: 'active' | 'inactive' | 'archived';
   notes?: string;
   loginPassword?: string | null;
+  /** False when student has no portal User (offline / roster-only). */
+  hasPortalAccess?: boolean;
   centerId: string;
   center?: {
     id: string;

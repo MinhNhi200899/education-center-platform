@@ -147,6 +147,34 @@ describe('Student Validators', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should accept offline student without email', () => {
+      const validData = {
+        centerId: generateId(),
+        fullName: 'Offline Student',
+        dateOfBirth: '2010-05-15',
+        gender: 'male',
+        enrollmentDate: '2024-01-01',
+        isOffline: true,
+      };
+
+      const result = createStudentSchema.safeParse({ body: validData });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject portal student without email', () => {
+      const invalidData = {
+        centerId: generateId(),
+        fullName: 'John Doe',
+        dateOfBirth: '2010-05-15',
+        gender: 'male',
+        enrollmentDate: '2024-01-01',
+        isOffline: false,
+      };
+
+      const result = createStudentSchema.safeParse({ body: invalidData });
+      expect(result.success).toBe(false);
+    });
+
     it('should reject enrollment date in the future', () => {
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 1);

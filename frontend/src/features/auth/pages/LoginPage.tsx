@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Card, TextInput, PasswordInput, Button, Title, Text, Stack, Alert } from '@mantine/core';
+import { Box, Card, TextInput, PasswordInput, Button, Title, Text, Stack, Alert, Checkbox } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,9 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(
+    () => localStorage.getItem('auth.rememberMe') === 'true'
+  );
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -21,7 +24,7 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const loggedInUser = await login(email, password);
+      const loggedInUser = await login(email, password, rememberMe);
       navigate(getHomePath(loggedInUser));
     } catch (err: any) {
       setError(err.response?.data?.error?.message || t('auth.login.failed'));
@@ -75,6 +78,16 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
+              />
+
+              <Checkbox
+                label={t('auth.login.rememberMe')}
+                checked={rememberMe}
+                onChange={(e) => {
+                  const checked = e.currentTarget.checked;
+                  setRememberMe(checked);
+                  localStorage.setItem('auth.rememberMe', String(checked));
+                }}
               />
 
               <Button type="submit" fullWidth loading={isLoading} mt="md">

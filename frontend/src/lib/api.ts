@@ -1,4 +1,10 @@
 import axios from 'axios';
+import {
+  clearAuth,
+  getAccessToken,
+  getRefreshToken,
+  updateAccessToken,
+} from '@/lib/token-storage';
 
 /** Production: VITE_API_URL=https://your-api.onrender.com/api/v1 */
 export const API_BASE_URL =
@@ -17,7 +23,7 @@ api.interceptors.request.use((config) => {
   if (config.url?.includes('/auth/login') || config.url?.includes('/auth/refresh')) {
     return config;
   }
-  const token = localStorage.getItem('accessToken');
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -32,25 +38,23 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getRefreshToken();
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refreshToken,
           });
-          const { accessToken } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+          updateAccessToken(accessToken, newRefreshToken);
 
           error.config.headers.Authorization = `Bearer ${accessToken}`;
           return axios(error.config);
         } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
+          clearAuth();
           window.location.href = '/login';
         }
       } else {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        clearAuth();
         window.location.href = '/login';
       }
     }

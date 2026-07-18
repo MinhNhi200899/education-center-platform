@@ -2,13 +2,17 @@ import { Request, Response } from 'express';
 import { classService } from './services/class.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
+import { assertCenterAccess, resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 /**
  * Create a new class
  * POST /api/v1/classes
  */
 export const createClass = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const classRecord = await classService.create(req.body);
+  const classRecord = await classService.create({
+    ...req.body,
+    centerId: resolveScopedCenterId(req, req.body.centerId),
+  });
 
   res.status(201).json({
     success: true,
@@ -23,7 +27,7 @@ export const createClass = asyncHandler(async (req: Request, res: Response): Pro
  */
 export const getClasses = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const filters = {
-    centerId: req.query.centerId as string,
+    centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
     status: req.query.status as any,
     academicLevel: req.query.academicLevel as any,
     search: req.query.search as string,
@@ -51,6 +55,7 @@ export const getClasses = asyncHandler(async (req: Request, res: Response): Prom
  */
 export const getClassById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const classRecord = await classService.getById(req.params.id);
+  assertCenterAccess(req, classRecord.centerId);
 
   res.json({
     success: true,
@@ -64,6 +69,8 @@ export const getClassById = asyncHandler(async (req: Request, res: Response): Pr
  * PUT /api/v1/classes/:id
  */
 export const updateClass = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const classRecord = await classService.update(req.params.id, req.body);
 
   res.json({
@@ -78,6 +85,8 @@ export const updateClass = asyncHandler(async (req: Request, res: Response): Pro
  * DELETE /api/v1/classes/:id
  */
 export const deleteClass = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const classRecord = await classService.archive(req.params.id);
 
   res.json({
@@ -92,6 +101,8 @@ export const deleteClass = asyncHandler(async (req: Request, res: Response): Pro
  * POST /api/v1/classes/:id/teachers
  */
 export const assignTeacher = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const { teacherId, role } = req.body;
   const result = await classService.assignTeacher(req.params.id, teacherId, role);
 
@@ -107,6 +118,8 @@ export const assignTeacher = asyncHandler(async (req: Request, res: Response): P
  * POST /api/v1/classes/:id/teachers/bulk
  */
 export const bulkAssignTeachers = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const { teachers } = req.body;
   const result = await classService.bulkAssignTeachers(req.params.id, teachers);
 
@@ -122,6 +135,8 @@ export const bulkAssignTeachers = asyncHandler(async (req: Request, res: Respons
  * DELETE /api/v1/classes/:id/teachers/:teacherId
  */
 export const removeTeacher = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const { role } = req.query as any;
   await classService.removeTeacher(req.params.id, req.params.teacherId, role);
 
@@ -137,6 +152,8 @@ export const removeTeacher = asyncHandler(async (req: Request, res: Response): P
  * POST /api/v1/classes/:id/students
  */
 export const enrollStudents = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const { studentIds, startDate, notes } = req.body;
   const result = await classService.enrollStudents(req.params.id, { studentIds, startDate, notes });
 
@@ -152,6 +169,8 @@ export const enrollStudents = asyncHandler(async (req: Request, res: Response): 
  * DELETE /api/v1/classes/:id/students/:studentId
  */
 export const withdrawStudent = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   await classService.withdrawStudent(req.params.id, req.params.studentId);
 
   res.json({
@@ -166,6 +185,8 @@ export const withdrawStudent = asyncHandler(async (req: Request, res: Response):
  * GET /api/v1/classes/:id/sessions
  */
 export const getClassStudents = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const students = await classService.getEnrolledStudents(req.params.id);
 
   res.json({
@@ -177,6 +198,8 @@ export const getClassStudents = asyncHandler(async (req: Request, res: Response)
 
 export const generateClassSessions = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await classService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const { year, month } = req.body;
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 0);
@@ -196,6 +219,8 @@ export const generateClassSessions = asyncHandler(
 );
 
 export const getClassSessions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const filters = {
     startDate: req.query.startDate as string,
     endDate: req.query.endDate as string,
@@ -216,6 +241,8 @@ export const getClassSessions = asyncHandler(async (req: Request, res: Response)
  * POST /api/v1/classes/:id/validate-schedule
  */
 export const validateSchedule = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existing = await classService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const { schedule } = req.body;
   const result = await classService.validateSchedule(req.params.id, schedule);
 

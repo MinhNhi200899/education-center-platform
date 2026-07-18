@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { teacherService } from './services/teacher.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
+import { assertCenterAccess, resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 /**
  * Create teacher
@@ -9,7 +10,10 @@ import { logger } from '../../shared/services/logger.service';
  */
 export const createTeacher = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const teacher = await teacherService.create(req.body);
+    const teacher = await teacherService.create({
+      ...req.body,
+      centerId: resolveScopedCenterId(req, req.body.centerId),
+    });
     res.status(201).json({
       success: true,
       data: teacher,
@@ -25,7 +29,7 @@ export const createTeacher = asyncHandler(
 export const getTeachers = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const filters = {
-      centerId: req.query.centerId as string,
+      centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
       status: req.query.status as any,
       gender: req.query.gender as any,
       search: req.query.search as string,
@@ -53,6 +57,7 @@ export const getTeachers = asyncHandler(
 export const getTeacherById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const teacher = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, teacher.centerId);
     res.json({
       success: true,
       data: teacher,
@@ -67,6 +72,8 @@ export const getTeacherById = asyncHandler(
  */
 export const updateTeacher = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const teacher = await teacherService.update(req.params.id, req.body);
     res.json({
       success: true,
@@ -82,6 +89,8 @@ export const updateTeacher = asyncHandler(
  */
 export const deleteTeacher = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const teacher = await teacherService.archive(req.params.id);
     res.json({
       success: true,
@@ -97,6 +106,8 @@ export const deleteTeacher = asyncHandler(
  */
 export const assignClass = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     await teacherService.assignClass(req.params.id, req.body);
     res.status(201).json({
       success: true,
@@ -112,6 +123,8 @@ export const assignClass = asyncHandler(
  */
 export const bulkAssignClasses = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const { classes } = req.body;
     await teacherService.bulkAssignClasses(req.params.id, classes);
     res.json({
@@ -128,6 +141,8 @@ export const bulkAssignClasses = asyncHandler(
  */
 export const unassignClass = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     await teacherService.unassignClass(req.params.id, req.params.classId);
     res.json({
       success: true,
@@ -143,6 +158,8 @@ export const unassignClass = asyncHandler(
  */
 export const getClassAssignments = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const assignments = await teacherService.getClassAssignments(req.params.id);
     res.json({
       success: true,
@@ -158,6 +175,8 @@ export const getClassAssignments = asyncHandler(
  */
 export const getTeachingHistory = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await teacherService.getById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const history = await teacherService.getTeachingHistory(req.params.id);
     res.json({
       success: true,

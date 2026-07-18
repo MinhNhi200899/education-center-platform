@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { SignOptions } from 'jsonwebtoken';
 import { PrismaClient, User, UserStatus } from '@prisma/client';
 import { config } from '../../../config';
 import { logger } from '../../../shared/services/logger.service';
@@ -145,8 +146,14 @@ export class AuthService {
 
     logger.info('User logged in', { userId: user.id, email });
 
-    const sessionInfo = this.buildSessionInfo(freshUser);
-    return this.generateAuthResponse(freshUser, sessionInfo);
+    const sessionInfo = {
+      ...this.buildSessionInfo(freshUser),
+      ipAddress,
+      userAgent,
+    };
+    return this.generateAuthResponse(freshUser, sessionInfo, {
+      rememberMe: data.rememberMe ?? false,
+    });
   }
 
   /**
@@ -223,28 +230,34 @@ export class AuthService {
       throw new TokenInvalidException('Refresh token not found or revoked');
     }
 
-    // Rotate token: revoke old and create new
+    // Rotate token: revoke old and create new (preserve remaining session length)
     await prisma.refreshToken.update({
       where: { id: storedToken.id },
       data: { isRevoked: true },
     });
 
+    const msRemaining = storedToken.expiresAt.getTime() - Date.now();
+    const refreshDays = Math.max(1, Math.ceil(msRemaining / (24 * 60 * 60 * 1000)));
+    const refreshExpiry = `${refreshDays}d` as SignOptions['expiresIn'];
+
     // Generate new tokens
     const sessionInfo = this.buildSessionInfo(user);
 
-    // Create new refresh token
-    const newRefreshToken = jwtService.generateRefreshToken({
-      userId: user.id,
-      email: user.email,
-      centerId: user.centerId,
-    });
+    const newRefreshToken = jwtService.generateRefreshToken(
+      {
+        userId: user.id,
+        email: user.email,
+        centerId: user.centerId,
+      },
+      refreshExpiry
+    );
 
-    // Store new refresh token
     await this.storeRefreshToken(
       user.id,
       newRefreshToken,
       storedToken.ipAddress ?? undefined,
-      storedToken.userAgent ?? undefined
+      storedToken.userAgent ?? undefined,
+      refreshDays
     );
 
     // Generate access token
@@ -463,17 +476,22 @@ export class AuthService {
 
   private async generateAuthResponse(
     user: any,
-    sessionInfo: SessionInfo
+    sessionInfo: SessionInfo,
+    options?: { rememberMe?: boolean }
   ): Promise<AuthResponse> {
-    const accessToken = jwtService.generateAccessToken(sessionInfo);
-    const refreshToken = jwtService.generateRefreshToken(sessionInfo);
+    const rememberMe = options?.rememberMe ?? false;
+    const refreshDays = rememberMe ? 30 : 1;
+    const refreshExpiry = (rememberMe ? '30d' : '1d') as SignOptions['expiresIn'];
 
-    // Store refresh token
+    const accessToken = jwtService.generateAccessToken(sessionInfo);
+    const refreshToken = jwtService.generateRefreshToken(sessionInfo, refreshExpiry);
+
     await this.storeRefreshToken(
       user.id,
       refreshToken,
       sessionInfo.ipAddress,
-      sessionInfo.userAgent
+      sessionInfo.userAgent,
+      refreshDays
     );
 
     return {
@@ -489,11 +507,12 @@ export class AuthService {
     userId: string,
     token: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    refreshDays = 7
   ): Promise<void> {
     const tokenHash = jwtService.hashToken(token);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    expiresAt.setDate(expiresAt.getDate() + refreshDays);
 
     await prisma.refreshToken.create({
       data: {

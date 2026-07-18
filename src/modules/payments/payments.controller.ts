@@ -3,6 +3,7 @@ import { paymentService } from './services/payment.service';
 import { fetchVietQRBanks } from '../../shared/services/vietqr-banks.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
+import { assertCenterAccess, resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 // ================================
 // TUITION PLAN CONTROLLERS
@@ -14,7 +15,10 @@ import { logger } from '../../shared/services/logger.service';
  */
 export const createTuitionPlan = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const plan = await paymentService.createTuitionPlan(req.body);
+    const plan = await paymentService.createTuitionPlan({
+      ...req.body,
+      centerId: resolveScopedCenterId(req, req.body.centerId),
+    });
     res.status(201).json({
       success: true,
       data: plan,
@@ -30,7 +34,7 @@ export const createTuitionPlan = asyncHandler(
 export const getTuitionPlans = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const filters = {
-      centerId: req.query.centerId as string,
+      centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
       classId: req.query.classId as string,
       isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
       page: parseInt(req.query.page as string) || 1,
@@ -55,6 +59,7 @@ export const getTuitionPlans = asyncHandler(
 export const getTuitionPlanById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const plan = await paymentService.getTuitionPlanById(req.params.id);
+    assertCenterAccess(req, plan.centerId);
     res.json({
       success: true,
       data: plan,
@@ -69,6 +74,8 @@ export const getTuitionPlanById = asyncHandler(
  */
 export const updateTuitionPlan = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await paymentService.getTuitionPlanById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const plan = await paymentService.updateTuitionPlan(req.params.id, req.body);
     res.json({
       success: true,
@@ -84,6 +91,8 @@ export const updateTuitionPlan = asyncHandler(
  */
 export const deleteTuitionPlan = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await paymentService.getTuitionPlanById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const plan = await paymentService.deleteTuitionPlan(req.params.id);
     res.json({
       success: true,
@@ -188,7 +197,7 @@ export const shareInvoiceZalo = asyncHandler(
  */
 export const sendDebtReminders = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const centerId = req.body.centerId as string | undefined;
+    const centerId = resolveScopedCenterId(req, req.body.centerId as string | undefined);
     const result = await paymentService.sendDebtReminders(centerId);
     res.json({
       success: true,
@@ -205,7 +214,7 @@ export const sendDebtReminders = asyncHandler(
 export const getInvoices = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const filters = {
-      centerId: req.query.centerId as string,
+      centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
       studentId: req.query.studentId as string,
       status: req.query.status as any,
       startDate: req.query.startDate as string,
@@ -234,6 +243,7 @@ export const getInvoices = asyncHandler(
 export const getInvoiceById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const invoice = await paymentService.getInvoiceById(req.params.id);
+    assertCenterAccess(req, invoice.centerId);
     res.json({
       success: true,
       data: invoice,
@@ -248,6 +258,8 @@ export const getInvoiceById = asyncHandler(
  */
 export const updateInvoice = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await paymentService.getInvoiceById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const invoice = await paymentService.updateInvoice(req.params.id, req.body);
     res.json({
       success: true,
@@ -263,6 +275,8 @@ export const updateInvoice = asyncHandler(
  */
 export const issueInvoice = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await paymentService.getInvoiceById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const invoice = await paymentService.issueInvoice(req.params.id);
     res.json({
       success: true,
@@ -278,7 +292,7 @@ export const issueInvoice = asyncHandler(
  */
 export const getOverdueInvoices = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const centerId = req.query.centerId as string;
+    const centerId = resolveScopedCenterId(req, req.query.centerId as string | undefined);
     const result = await paymentService.getOverdueInvoices(centerId);
     res.json({
       success: true,
@@ -294,6 +308,8 @@ export const getOverdueInvoices = asyncHandler(
  */
 export const recordPayment = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
+    const existing = await paymentService.getInvoiceById(req.params.id);
+    assertCenterAccess(req, existing.centerId);
     const userId = (req as any).user?.id;
     const { amount, paymentMethod, transactionId, transactionDate, bankCode, notes } = req.body;
 
@@ -460,7 +476,7 @@ export const generateVietQR = asyncHandler(
 export const getRevenue = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const filters = {
-      centerId: (req.query.centerId as string) || req.user?.centerId || undefined,
+      centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
       classId: req.query.classId as string,
       period: req.query.period as any,
       startDate: req.query.startDate as string,
@@ -485,10 +501,9 @@ export const getRevenue = asyncHandler(
  */
 export const getCollectionMetrics = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const centerId = req.query.centerId as string;
+    const centerId = resolveScopedCenterId(req, req.query.centerId as string | undefined);
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
-
     const result = await paymentService.getCollectionMetrics(centerId, startDate, endDate);
     res.json({
       success: true,

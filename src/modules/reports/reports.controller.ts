@@ -6,9 +6,10 @@ import {
   revenueDrilldownQuerySchema,
   periodReportQuerySchema,
 } from '../payments/validators/payment.validators';
+import { resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 function resolveCenterId(req: Request): string | undefined {
-  return (req.query.centerId as string) || req.user?.centerId || undefined;
+  return resolveScopedCenterId(req, req.query.centerId as string | undefined);
 }
 
 /**

@@ -123,7 +123,7 @@ export class SepayWebhookService {
   verifyApiKey(authHeader: string | undefined): boolean {
     const expected = process.env.SEPAY_WEBHOOK_API_KEY?.trim();
     if (!expected) {
-      return true;
+      return process.env.NODE_ENV !== 'production';
     }
     if (!authHeader) {
       return false;

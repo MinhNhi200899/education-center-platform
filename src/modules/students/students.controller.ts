@@ -2,13 +2,15 @@ import { Request, Response } from 'express';
 import { studentService } from './services/student.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
+import { assertCenterAccess, resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 /**
  * Create a new student
  * POST /api/v1/students
  */
 export const createStudent = asyncHandler(async (req: Request, res: Response) => {
-  const student = await studentService.create(req.body);
+  const centerId = resolveScopedCenterId(req, req.body.centerId);
+  const student = await studentService.create({ ...req.body, centerId });
 
   res.status(201).json({
     success: true,
@@ -23,7 +25,7 @@ export const createStudent = asyncHandler(async (req: Request, res: Response) =>
  */
 export const getStudents = asyncHandler(async (req: Request, res: Response) => {
   const filters = {
-    centerId: req.query.centerId as string,
+    centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
     status: req.query.status as any,
     gender: req.query.gender as any,
     search: req.query.search as string,
@@ -53,6 +55,7 @@ export const getStudents = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getStudentById = asyncHandler(async (req: Request, res: Response) => {
   const student = await studentService.getById(req.params.id);
+  assertCenterAccess(req, student.centerId);
 
   res.json({
     success: true,
@@ -66,6 +69,8 @@ export const getStudentById = asyncHandler(async (req: Request, res: Response) =
  * PUT /api/v1/students/:id
  */
 export const updateStudent = asyncHandler(async (req: Request, res: Response) => {
+  const existing = await studentService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const student = await studentService.update(req.params.id, req.body);
 
   res.json({
@@ -80,6 +85,8 @@ export const updateStudent = asyncHandler(async (req: Request, res: Response) =>
  * DELETE /api/v1/students/:id
  */
 export const deleteStudent = asyncHandler(async (req: Request, res: Response) => {
+  const existing = await studentService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const student = await studentService.archive(req.params.id);
 
   res.json({
@@ -95,6 +102,10 @@ export const deleteStudent = asyncHandler(async (req: Request, res: Response) =>
  */
 export const bulkDeleteStudents = asyncHandler(async (req: Request, res: Response) => {
   const { ids } = req.body;
+  for (const id of ids as string[]) {
+    const existing = await studentService.getById(id);
+    assertCenterAccess(req, existing.centerId);
+  }
   const result = await studentService.bulkArchive(ids);
 
   res.json({
@@ -109,6 +120,8 @@ export const bulkDeleteStudents = asyncHandler(async (req: Request, res: Respons
  * POST /api/v1/students/:id/parents
  */
 export const addParent = asyncHandler(async (req: Request, res: Response) => {
+  const existing = await studentService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   await studentService.addParent(req.params.id, req.body);
 
   res.status(201).json({
@@ -123,6 +136,8 @@ export const addParent = asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/students/:id/transfer-class
  */
 export const transferClass = asyncHandler(async (req: Request, res: Response) => {
+  const existing = await studentService.getById(req.params.id);
+  assertCenterAccess(req, existing.centerId);
   const { fromClassId, toClassId, effectiveDate, reason } = req.body;
   const result = await studentService.transferClass(req.params.id, {
     fromClassId,
@@ -143,7 +158,7 @@ export const transferClass = asyncHandler(async (req: Request, res: Response) =>
  * POST /api/v1/students/import
  */
 export const importStudents = asyncHandler(async (req: Request, res: Response) => {
-  const { centerId, rows } = req.body;
+  const { rows } = req.body;
 
   if (!rows || !Array.isArray(rows)) {
     res.status(400).json({
@@ -157,7 +172,8 @@ export const importStudents = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  const result = await studentService.importFromExcel(centerId, rows);
+  const centerId = resolveScopedCenterId(req, req.body.centerId);
+  const result = await studentService.importFromExcel(centerId!, rows);
 
   res.status(201).json({
     success: true,
@@ -172,7 +188,7 @@ export const importStudents = asyncHandler(async (req: Request, res: Response) =
  */
 export const exportStudents = asyncHandler(async (req: Request, res: Response) => {
   const filters = {
-    centerId: req.query.centerId as string,
+    centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
     status: req.query.status as any,
     gender: req.query.gender as any,
     search: req.query.search as string,

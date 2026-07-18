@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { sessionService } from './services/session.service';
+import { assertCenterAccess } from '../../shared/utils/center-scope';
+import { prisma } from '../../config/database';
 
 export const createSession = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const session = await sessionService.create(req.user!.id, req.body);
@@ -11,7 +13,19 @@ export const createSession = asyncHandler(async (req: Request, res: Response): P
   });
 });
 
+async function assertSessionCenterAccess(req: Request, sessionId: string): Promise<void> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { class: { select: { centerId: true } } },
+  });
+  if (!session) {
+    return;
+  }
+  assertCenterAccess(req, session.class.centerId);
+}
+
 export const getSession = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await assertSessionCenterAccess(req, req.params.id);
   const session = await sessionService.getById(req.params.id);
   res.json({
     success: true,
@@ -21,6 +35,7 @@ export const getSession = asyncHandler(async (req: Request, res: Response): Prom
 });
 
 export const updateSession = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await assertSessionCenterAccess(req, req.params.id);
   const session = await sessionService.update(req.params.id, req.user!.id, req.body);
   res.json({
     success: true,
@@ -30,6 +45,7 @@ export const updateSession = asyncHandler(async (req: Request, res: Response): P
 });
 
 export const deleteSession = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await assertSessionCenterAccess(req, req.params.id);
   const result = await sessionService.delete(req.params.id, req.user!.id);
   res.json({
     success: true,
@@ -39,6 +55,7 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response): P
 });
 
 export const addSessionMaterial = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await assertSessionCenterAccess(req, req.params.id);
   const userId = req.user!.id;
   const material = await sessionService.addMaterial(req.params.id, userId, req.body);
   res.status(201).json({

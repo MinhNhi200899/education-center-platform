@@ -3,6 +3,7 @@ import { attendanceService } from './services/attendance.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
 import { prisma } from '../../config/database';
+import { resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 /**
  * Get attendance records with filters
@@ -10,7 +11,7 @@ import { prisma } from '../../config/database';
  */
 export const getAttendance = asyncHandler(async (req: Request, res: Response) => {
   const filters = {
-    centerId: req.query.centerId as string,
+    centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
     classId: req.query.classId as string,
     sessionId: req.query.sessionId as string,
     studentId: req.query.studentId as string,
@@ -238,7 +239,7 @@ export const getSessionAttendance = asyncHandler(async (req: Request, res: Respo
  * GET /api/v1/attendance/reasons
  */
 export const getAbsenceReasons = asyncHandler(async (req: Request, res: Response) => {
-  const centerId = req.query.centerId as string;
+  const centerId = resolveScopedCenterId(req, req.query.centerId as string | undefined);
 
   const reasons = await attendanceService.getAbsenceReasons(centerId);
 
@@ -257,7 +258,11 @@ export const getAbsenceReasons = asyncHandler(async (req: Request, res: Response
  * POST /api/v1/attendance/reasons
  */
 export const createAbsenceReason = asyncHandler(async (req: Request, res: Response) => {
-  const centerId = req.body.centerId || req.headers['x-center-id'] as string;
+  const centerId = resolveScopedCenterId(
+    req,
+    (req.body.centerId as string | undefined) ||
+      (req.headers['x-center-id'] as string | undefined)
+  );
 
   if (!centerId) {
     res.status(400).json({

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { rbacService } from '../services/rbac.service';
 import { logger } from '../../../shared/services/logger.service';
 import { ForbiddenException, UnauthorizedException } from '../../../shared/types/error.types';
+import { resolveScopedCenterId } from '../../../shared/utils/center-scope';
 
 /**
  * Require specific permission(s)
@@ -21,8 +22,13 @@ export const requirePermission = (...permissions: string[]) => {
         throw new UnauthorizedException('Authentication required');
       }
 
-      // Get user's center from request context
-      const centerId = req.params.centerId || req.body?.centerId || user.centerId;
+      // Get user's center from request context (scoped)
+      const centerId = resolveScopedCenterId(
+        req,
+        (req.params.centerId as string) ||
+          req.body?.centerId ||
+          (req.query.centerId as string | undefined)
+      );
 
       // Check all required permissions (AND logic)
       for (const permission of permissions) {
@@ -76,7 +82,12 @@ export const requireAnyPermission = (...permissions: string[]) => {
         throw new UnauthorizedException('Authentication required');
       }
 
-      const centerId = req.params.centerId || req.body?.centerId || user.centerId;
+      const centerId = resolveScopedCenterId(
+        req,
+        (req.params.centerId as string) ||
+          req.body?.centerId ||
+          (req.query.centerId as string | undefined)
+      );
 
       // Check if user has ANY of the permissions
       const hasPermission = await rbacService.hasAnyPermission(

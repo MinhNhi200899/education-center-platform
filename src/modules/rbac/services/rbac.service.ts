@@ -13,6 +13,7 @@ import {
 import { PERMISSION_DEFINITIONS } from './permissions';
 import { DEFAULT_ROLES } from '../types/rbac.types';
 import { NotFoundException, ConflictException, ForbiddenException } from '../../../shared/types/error.types';
+import { CenterScopeActor, isSuperAdmin } from '../../../shared/utils/center-scope';
 
 export class RbacService {
   /**
@@ -494,9 +495,9 @@ export class RbacService {
   async assignRoleToUser(
     userId: string,
     roleId: string,
-    centerId?: string
+    centerId: string | undefined,
+    actor: CenterScopeActor
   ): Promise<void> {
-    // Verify user and role exist
     const [user, role] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId } }),
       prisma.role.findUnique({ where: { id: roleId } }),
@@ -505,7 +506,32 @@ export class RbacService {
     if (!user) throw new NotFoundException('User');
     if (!role) throw new NotFoundException('Role');
 
-    // Check for existing assignment
+    const actorIsSuperAdmin = isSuperAdmin(actor);
+
+    if (role.name === 'super_admin' && !actorIsSuperAdmin) {
+      throw new ForbiddenException('Only super_admin can assign the super_admin role');
+    }
+
+    if (role.name === 'center_manager' && !actorIsSuperAdmin) {
+      throw new ForbiddenException('Only super_admin can assign the center_manager role');
+    }
+
+    if (!actorIsSuperAdmin) {
+      const actorCenterId = actor.centerId;
+      if (!actorCenterId) {
+        throw new ForbiddenException('User is not assigned to a center');
+      }
+
+      const assignmentCenterId = centerId || actorCenterId;
+      if (assignmentCenterId !== actorCenterId) {
+        throw new ForbiddenException('Cannot assign roles outside your center');
+      }
+
+      if (user.centerId && user.centerId !== actorCenterId) {
+        throw new ForbiddenException('Cannot assign roles to users outside your center');
+      }
+    }
+
     const existing = await prisma.userRole.findFirst({
       where: { userId, roleId, centerId: centerId || null },
     });
@@ -522,7 +548,7 @@ export class RbacService {
       },
     });
 
-    logger.info('Role assigned to user', { userId, roleId, centerId });
+    logger.info('Role assigned to user', { userId, roleId, centerId, actorId: actor.id });
   }
 
   /**
@@ -531,13 +557,44 @@ export class RbacService {
   async removeRoleFromUser(
     userId: string,
     roleId: string,
-    centerId?: string
+    centerId: string | undefined,
+    actor: CenterScopeActor
   ): Promise<void> {
+    const [user, role] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.role.findUnique({ where: { id: roleId } }),
+    ]);
+
+    if (!user) throw new NotFoundException('User');
+    if (!role) throw new NotFoundException('Role');
+
+    const actorIsSuperAdmin = isSuperAdmin(actor);
+
+    if (role.name === 'super_admin' && !actorIsSuperAdmin) {
+      throw new ForbiddenException('Only super_admin can remove the super_admin role');
+    }
+
+    if (!actorIsSuperAdmin) {
+      const actorCenterId = actor.centerId;
+      if (!actorCenterId) {
+        throw new ForbiddenException('User is not assigned to a center');
+      }
+
+      const assignmentCenterId = centerId || actorCenterId;
+      if (assignmentCenterId !== actorCenterId) {
+        throw new ForbiddenException('Cannot remove roles outside your center');
+      }
+
+      if (user.centerId && user.centerId !== actorCenterId) {
+        throw new ForbiddenException('Cannot modify roles for users outside your center');
+      }
+    }
+
     await prisma.userRole.deleteMany({
       where: { userId, roleId, centerId: centerId || null },
     });
 
-    logger.info('Role removed from user', { userId, roleId, centerId });
+    logger.info('Role removed from user', { userId, roleId, centerId, actorId: actor.id });
   }
 
   /**

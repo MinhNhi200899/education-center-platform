@@ -1,14 +1,19 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { scheduleQueryService } from './services/schedule-query.service';
+import { assertCenterAccess, resolveScopedCenterId } from '../../shared/utils/center-scope';
+import { classService } from '../classes/services/class.service';
+import { teacherService } from '../teachers/services/teacher.service';
 
 export const getWeeklySchedule = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { centerId, teacherId, classId, weekStart } = req.query as {
+  const { centerId: centerIdQuery, teacherId, classId, weekStart } = req.query as {
     centerId?: string;
     teacherId?: string;
     classId?: string;
     weekStart: string;
   };
+
+  const centerId = resolveScopedCenterId(req, centerIdQuery);
 
   const data = await scheduleQueryService.getWeekly({
     centerId,
@@ -31,6 +36,9 @@ export const getMonthlySchedule = asyncHandler(async (req: Request, res: Respons
     classId: string;
   };
 
+  const classRecord = await classService.getById(classId);
+  assertCenterAccess(req, classRecord.centerId);
+
   const data = await scheduleQueryService.getMonthly(year, month, classId);
 
   res.json({
@@ -41,6 +49,9 @@ export const getMonthlySchedule = asyncHandler(async (req: Request, res: Respons
 });
 
 export const getTeacherSchedule = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const teacher = await teacherService.getById(req.params.id);
+  assertCenterAccess(req, teacher.centerId);
+
   const data = await scheduleQueryService.getTeacherSchedule(req.params.id);
 
   res.json({

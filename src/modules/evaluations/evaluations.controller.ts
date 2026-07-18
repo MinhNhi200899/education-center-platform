@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { evaluationService } from './services/evaluation.service';
 import { evaluationZaloService } from './services/zalo.service';
+import { resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 function getCenterId(req: Request): string | undefined {
-  return req.user?.centerId ?? undefined;
+  return resolveScopedCenterId(req, req.query.centerId as string | undefined);
 }
 
 function getUserId(req: Request): string | undefined {

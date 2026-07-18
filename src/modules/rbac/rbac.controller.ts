@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { rbacService } from './services/rbac.service';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { logger } from '../../shared/services/logger.service';
+import { resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 /**
  * List users for role assignment
@@ -9,7 +10,7 @@ import { logger } from '../../shared/services/logger.service';
  */
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
   const result = await rbacService.listUsers({
-    centerId: req.query.centerId as string | undefined,
+    centerId: resolveScopedCenterId(req, req.query.centerId as string | undefined),
     search: req.query.search as string | undefined,
     page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
     limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 50,
@@ -172,7 +173,7 @@ export const assignRoleToUser = asyncHandler(async (req: Request, res: Response)
   const { roleId, centerId } = req.body;
   const userId = req.params.userId;
 
-  await rbacService.assignRoleToUser(userId, roleId, centerId);
+  await rbacService.assignRoleToUser(userId, roleId, centerId, req.user!);
 
   res.json({
     success: true,
@@ -187,9 +188,9 @@ export const assignRoleToUser = asyncHandler(async (req: Request, res: Response)
  */
 export const removeRoleFromUser = asyncHandler(async (req: Request, res: Response) => {
   const { userId, roleId } = req.params;
-  const centerId = req.query.centerId as string | undefined;
+  const centerId = resolveScopedCenterId(req, req.query.centerId as string | undefined);
 
-  await rbacService.removeRoleFromUser(userId, roleId, centerId);
+  await rbacService.removeRoleFromUser(userId, roleId, centerId, req.user!);
 
   res.json({
     success: true,

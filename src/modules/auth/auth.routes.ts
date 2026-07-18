@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as authController from './auth.controller';
 import { authenticate } from './middleware/authenticate';
+import { blockPublicRegisterInProduction } from './middleware/block-public-register';
 import { validateRequest } from '../../shared/middleware/validate-request';
 
 // Request body schemas (validateRequest parses req.body directly)
@@ -85,6 +86,7 @@ const router = Router();
  */
 router.post(
   '/register',
+  blockPublicRegisterInProduction,
   validateRequest({ body: registerBodySchema }),
   authController.register
 );

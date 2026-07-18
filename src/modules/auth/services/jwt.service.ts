@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../../../config';
 import { TokenPayload } from '../types/auth.types';
 import { TokenExpiredException, TokenInvalidException } from '../../../shared/types/error.types';
@@ -16,13 +16,16 @@ export class JwtService {
   }
 
   /**
-   * Generate refresh token (long-lived, 7 days)
+   * Generate refresh token (default 7 days, or custom expiry e.g. 30d)
    */
-  generateRefreshToken(payload: Omit<TokenPayload, 'type'>): string {
+  generateRefreshToken(
+    payload: Omit<TokenPayload, 'type'>,
+    expiresIn: SignOptions['expiresIn'] = config.jwt.refreshTokenExpiry as SignOptions['expiresIn']
+  ): string {
     return jwt.sign(
       { ...payload, type: 'refresh' },
       config.jwt.secret,
-      { expiresIn: config.jwt.refreshTokenExpiry }
+      { expiresIn }
     );
   }
 

@@ -4,6 +4,7 @@ import { requirePermission } from '../rbac/middleware/require-permission';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { getRevenue, getCollectionMetrics } from '../payments/payments.controller';
 import { prisma } from '../../config/database';
+import { resolveScopedCenterId } from '../../shared/utils/center-scope';
 
 const router = Router();
 
@@ -45,8 +46,7 @@ router.get(
   '/students',
   requirePermission('dashboard.read'),
   asyncHandler(async (req: Request, res: Response) => {
-    const centerId =
-      (req.query.centerId as string) || req.user?.centerId || undefined;
+    const centerId = resolveScopedCenterId(req, req.query.centerId as string | undefined);
 
     const where = centerId ? { centerId } : {};
 

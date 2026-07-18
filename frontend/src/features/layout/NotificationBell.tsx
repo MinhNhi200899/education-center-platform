@@ -104,7 +104,7 @@ export function NotificationBell() {
               {t('notifications.empty')}
             </Text>
           ) : (
-            <Stack gap={0}>
+            <Stack gap="xs" p="xs">
               {items.map((item) => (
                 <Menu.Item
                   key={item.id}
@@ -115,6 +115,7 @@ export function NotificationBell() {
                     height: 'auto',
                     paddingTop: 10,
                     paddingBottom: 10,
+                    borderRadius: 'var(--mantine-radius-sm)',
                   }}
                 >
                   <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">

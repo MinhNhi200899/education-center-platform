@@ -49,3 +49,32 @@ export const getHomework = asyncHandler(async (req: Request, res: Response) => {
     meta: { timestamp: new Date().toISOString() },
   });
 });
+
+export const getSessionHomework = asyncHandler(async (req: Request, res: Response) => {
+  const data = await portalService.getSessionHomeworkDetail(req.user!.id, req.params.sessionId);
+  res.json({
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString() },
+  });
+});
+
+export const submitSessionHomework = asyncHandler(async (req: Request, res: Response) => {
+  const file = req.file;
+  const note = typeof req.body?.note === 'string' ? req.body.note : undefined;
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  const data = await portalService.submitHomework(req.user!.id, req.params.sessionId, {
+    note,
+    file: file
+      ? { buffer: file.buffer, originalname: file.originalname }
+      : undefined,
+    baseUrl,
+  });
+
+  res.status(201).json({
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString() },
+  });
+});

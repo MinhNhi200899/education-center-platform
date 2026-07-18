@@ -16,6 +16,7 @@ import centersRoutes from '../modules/centers/centers.routes';
 import portalRoutes from '../modules/portal/portal.routes';
 import teacherPortalRoutes from '../modules/teacher-portal/teacher-portal.routes';
 import webhooksRoutes from '../modules/webhooks/webhooks.routes';
+import notificationsRoutes from '../modules/notifications/notifications.routes';
 
 const router = Router();
 
@@ -74,6 +75,9 @@ router.use('/centers', centersRoutes);
 
 // Student portal (self-service)
 router.use('/portal', portalRoutes);
+
+// In-app notifications (any authenticated user)
+router.use('/notifications', notificationsRoutes);
 
 // Teacher portal (self-service)
 router.use('/teacher-portal', teacherPortalRoutes);

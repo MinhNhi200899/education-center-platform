@@ -294,6 +294,7 @@ model Student {
   evaluations     Evaluation[]
   attendanceRecords AttendanceRecord[]
   monthlyFees     ClassStudentMonthlyFee[]
+  homeworkSubmissions HomeworkSubmission[]
 
   @@index([centerId])
   @@index([status])
@@ -469,6 +470,7 @@ model Session {
   teacher           User               @relation("SessionTeacher", fields: [teacherId], references: [id])
   attendanceRecords AttendanceRecord[]
   materials         SessionMaterial[]
+  homeworkSubmissions HomeworkSubmission[]
 
   @@index([classId])
   @@index([teacherId])
@@ -493,6 +495,28 @@ model SessionMaterial {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
+}
+
+// Student homework submission for a session
+model HomeworkSubmission {
+  id          String   @id @default(uuid())
+  sessionId   String
+  studentId   String
+  fileUrl     String?  @db.VarChar(500)
+  fileName    String?  @db.VarChar(255)
+  fileType    String?  @db.VarChar(100)
+  fileSize    Int?
+  driveFileId String?  @db.VarChar(100)
+  note        String?  @db.Text
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([sessionId])
+  @@index([studentId])
 }
 
 // ============================================================

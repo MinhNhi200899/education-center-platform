@@ -1,6 +1,11 @@
 import { EnrollmentStatus, InvoiceStatus } from '@prisma/client';
 import { prisma } from '../../config/database';
-import { NotFoundException } from '../../shared/types/error.types';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '../../shared/types/error.types';
+import { uploadHomeworkFile } from '../../shared/services/homework-upload.service';
 
 export class PortalService {
   private async resolveStudentId(userId: string): Promise<string> {
@@ -319,6 +324,182 @@ export class PortalService {
       }));
 
     return { items };
+  }
+
+  private sessionEndAt(sessionDate: Date, endTime: string): Date {
+    const dateStr = sessionDate.toISOString().split('T')[0];
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h, min] = endTime.split(':').map(Number);
+    return new Date(y, m - 1, d, h, min, 0, 0);
+  }
+
+  private async assertStudentInSession(studentId: string, sessionId: string) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: { select: { id: true, name: true } },
+        materials: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            fileUrl: true,
+            fileName: true,
+            fileType: true,
+            fileSize: true,
+          },
+        },
+      },
+    });
+    if (!session) throw new NotFoundException('Session');
+
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        studentId,
+        classId: session.classId,
+        status: EnrollmentStatus.active,
+      },
+    });
+    if (!enrollment) {
+      throw new ForbiddenException('You are not enrolled in this class');
+    }
+
+    return session;
+  }
+
+  async getSessionHomeworkDetail(userId: string, sessionId: string) {
+    const studentId = await this.resolveStudentId(userId);
+    const session = await this.assertStudentInSession(studentId, sessionId);
+    const endAt = this.sessionEndAt(session.sessionDate, session.endTime);
+    const canSubmit = Date.now() < endAt.getTime();
+
+    const submission = await prisma.homeworkSubmission.findUnique({
+      where: {
+        sessionId_studentId: { sessionId, studentId },
+      },
+    });
+
+    return {
+      sessionId: session.id,
+      classId: session.classId,
+      className: session.class.name,
+      sessionDate: session.sessionDate.toISOString().split('T')[0],
+      startTime: session.startTime,
+      endTime: session.endTime,
+      classroom: session.classroom,
+      notes: session.notes?.trim() || null,
+      materials: session.materials,
+      submissionDeadline: endAt.toISOString(),
+      canSubmit,
+      submission: submission
+        ? {
+            id: submission.id,
+            fileUrl: submission.fileUrl,
+            fileName: submission.fileName,
+            fileType: submission.fileType,
+            fileSize: submission.fileSize,
+            note: submission.note,
+            submittedAt: submission.submittedAt,
+          }
+        : null,
+    };
+  }
+
+  async submitHomework(
+    userId: string,
+    sessionId: string,
+    input: {
+      note?: string;
+      file?: { buffer: Buffer; originalname: string };
+      baseUrl: string;
+    }
+  ) {
+    const studentId = await this.resolveStudentId(userId);
+    const session = await this.assertStudentInSession(studentId, sessionId);
+    const endAt = this.sessionEndAt(session.sessionDate, session.endTime);
+
+    if (Date.now() >= endAt.getTime()) {
+      throw new BadRequestException(
+        'Homework submission is locked after the class ends',
+        'SUBMISSION_LOCKED'
+      );
+    }
+
+    const note = input.note?.trim() || null;
+    if (!note && !input.file) {
+      throw new BadRequestException('Provide a note or a file', 'EMPTY_SUBMISSION');
+    }
+
+    let uploaded: {
+      url: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      driveFileId: string;
+    } | null = null;
+
+    if (input.file) {
+      uploaded = await uploadHomeworkFile(
+        input.file.buffer,
+        input.file.originalname,
+        input.baseUrl
+      );
+    }
+
+    const existing = await prisma.homeworkSubmission.findUnique({
+      where: { sessionId_studentId: { sessionId, studentId } },
+    });
+
+    const data = {
+      note: note ?? existing?.note ?? null,
+      fileUrl: uploaded?.url ?? existing?.fileUrl ?? null,
+      fileName: uploaded?.fileName ?? existing?.fileName ?? null,
+      fileType: uploaded?.fileType ?? existing?.fileType ?? null,
+      fileSize: uploaded?.fileSize ?? existing?.fileSize ?? null,
+      driveFileId: uploaded?.driveFileId ?? existing?.driveFileId ?? null,
+      submittedAt: new Date(),
+    };
+
+    if (!data.note && !data.fileUrl) {
+      throw new BadRequestException('Provide a note or a file', 'EMPTY_SUBMISSION');
+    }
+
+    const submission = await prisma.homeworkSubmission.upsert({
+      where: { sessionId_studentId: { sessionId, studentId } },
+      create: {
+        sessionId,
+        studentId,
+        ...data,
+      },
+      update: data,
+    });
+
+    // Notify teacher that student submitted
+    if (session.teacherId) {
+      await prisma.notification.create({
+        data: {
+          userId: session.teacherId,
+          type: 'homework_submission',
+          title: 'Học sinh nộp bài tập',
+          message: `Có bài nộp mới cho buổi ${session.class.name} (${session.sessionDate.toISOString().split('T')[0]} ${session.startTime}).`,
+          data: {
+            sessionId,
+            studentId,
+            submissionId: submission.id,
+          },
+        },
+      });
+    }
+
+    return {
+      id: submission.id,
+      fileUrl: submission.fileUrl,
+      fileName: submission.fileName,
+      fileType: submission.fileType,
+      fileSize: submission.fileSize,
+      note: submission.note,
+      submittedAt: submission.submittedAt,
+      canSubmit: true,
+    };
   }
 }
 

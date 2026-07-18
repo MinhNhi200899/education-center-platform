@@ -1400,6 +1400,7 @@ export class TeacherPortalService {
           message: transferMessage,
           data: {
             ...(share.payload as object),
+            invoiceId: receipt.invoice.id,
             qrCodeUrl: qr?.qrCodeUrl ?? null,
             paymentCode: qr?.description ?? receipt.invoice.invoiceNumber,
           },

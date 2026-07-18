@@ -1,7 +1,8 @@
-import { Group, Title, ActionIcon, Menu, Avatar, Text, UnstyledButton, Select } from '@mantine/core';
-import { IconBell, IconSettings, IconLogout, IconUser, IconLanguage } from '@tabler/icons-react';
+import { Group, Title, Menu, Avatar, Text, UnstyledButton, Select } from '@mantine/core';
+import { IconSettings, IconLogout, IconUser, IconLanguage } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { NotificationBell } from './NotificationBell';
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -30,9 +31,7 @@ export function Header() {
           size="sm"
         />
 
-        <ActionIcon variant="subtle" color="gray" size="lg" radius="md" aria-label={t('header.notifications')}>
-          <IconBell size={20} />
-        </ActionIcon>
+        <NotificationBell />
 
         <Menu shadow="md" width={200} position="bottom-end">
           <Menu.Target>

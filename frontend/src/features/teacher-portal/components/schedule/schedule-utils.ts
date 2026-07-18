@@ -41,6 +41,45 @@ export function formatMonthLabel(monthStart: string): string {
   return `${String(m).padStart(2, '0')}/${y}`;
 }
 
+/** Sunday-start week containing the given date (local). */
+export function getWeekStart(date = new Date()): string {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return toIsoLocal(d);
+}
+
+export function getDaysInWeek(weekStart: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+}
+
+export function shiftWeek(weekStart: string, deltaWeeks: number): string {
+  return addDays(weekStart, deltaWeeks * 7);
+}
+
+export function formatWeekLabel(weekStart: string): string {
+  const end = addDays(weekStart, 6);
+  const [y1, m1, d1] = weekStart.split('-');
+  const [y2, m2, d2] = end.split('-');
+  if (y1 === y2 && m1 === m2) {
+    return `${d1}/${m1} – ${d2}/${m2}/${y2}`;
+  }
+  if (y1 === y2) {
+    return `${d1}/${m1} – ${d2}/${m2}/${y2}`;
+  }
+  return `${d1}/${m1}/${y1} – ${d2}/${m2}/${y2}`;
+}
+
+/** Months that cover a week (1 or 2 values) for schedule API fetches. */
+export function monthsCoveringWeek(weekStart: string): string[] {
+  const startMonth = getMonthStart(new Date(`${weekStart}T12:00:00`));
+  const endMonth = getMonthStart(new Date(`${addDays(weekStart, 6)}T12:00:00`));
+  return startMonth === endMonth ? [startMonth] : [startMonth, endMonth];
+}
+
+function toIsoLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function dayOfWeekKey(date: string): string {
   const day = new Date(`${date}T12:00:00`).getDay();
   const keys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -53,8 +92,7 @@ export function isWeekend(date: string): boolean {
 }
 
 export function getTodayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return toIsoLocal(new Date());
 }
 
 export function isToday(date: string): boolean {
@@ -64,7 +102,7 @@ export function isToday(date: string): boolean {
 export function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T12:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return toIsoLocal(d);
 }
 
 export function timeToMinutes(time: string): number {

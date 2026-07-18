@@ -3,13 +3,12 @@ import { MonthPicker } from '@mantine/dates';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useDroppable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   dayOfWeekKey,
-  formatMonthLabel,
-  getDaysInMonth,
-  getMonthStart,
-  getTodayIso,
+  formatWeekLabel,
+  getDaysInWeek,
+  getWeekStart,
   gridTotalHeightPx,
   hourLabels,
   HOUR_HEIGHT_PX,
@@ -58,7 +57,6 @@ function DayColumn({
   onDeleteSession,
   onSelectSession,
   onCreateSlot,
-  columnRef,
 }: {
   date: string;
   sessions: TeacherScheduleSession[];
@@ -67,7 +65,6 @@ function DayColumn({
   onDeleteSession: (session: TeacherScheduleSession) => void;
   onSelectSession: (session: TeacherScheduleSession) => void;
   onCreateSlot?: (draft: CreateSlotDraft) => void;
-  columnRef?: (el: HTMLDivElement | null) => void;
 }) {
   const { t } = useTranslation();
   const weekend = isWeekend(date);
@@ -134,11 +131,11 @@ function DayColumn({
 
   return (
     <Paper
-      ref={columnRef}
       withBorder
       radius="md"
       style={{
-        flex: '0 0 108px',
+        flex: '1 1 0',
+        minWidth: 72,
         background: today
           ? 'var(--mantine-color-yellow-0)'
           : weekend
@@ -162,11 +159,6 @@ function DayColumn({
         <Text size="sm" fw={600} c={today ? 'yellow.9' : undefined}>
           {date.slice(8)}
         </Text>
-        {today && (
-          <Text size="xs" fw={700} c="yellow.9">
-            {t('portal.teacher.schedule.today')}
-          </Text>
-        )}
       </Box>
       <Box
         ref={gridRef}
@@ -221,54 +213,42 @@ function DayColumn({
 }
 
 interface Props {
-  monthStart: string;
+  weekStart: string;
   sessions: TeacherScheduleSession[];
   savingIds: Set<string>;
   isDraggingSession?: boolean;
   onDeleteSession: (session: TeacherScheduleSession) => void;
   onSelectSession: (session: TeacherScheduleSession) => void;
   onCreateSlot?: (draft: CreateSlotDraft) => void;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  onMonthSelect: (monthStart: string) => void;
+  onPrevWeek: () => void;
+  onNextWeek: () => void;
+  onWeekSelect: (weekStart: string) => void;
 }
 
 export function MonthlyTimeGrid({
-  monthStart,
+  weekStart,
   sessions,
   savingIds,
   isDraggingSession,
   onDeleteSession,
   onSelectSession,
   onCreateSlot,
-  onPrevMonth,
-  onNextMonth,
-  onMonthSelect,
+  onPrevWeek,
+  onNextWeek,
+  onWeekSelect,
 }: Props) {
   const { t } = useTranslation();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const days = getDaysInMonth(monthStart);
+  const days = getDaysInWeek(weekStart);
   const hours = hourLabels();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const todayRef = useRef<HTMLDivElement | null>(null);
-  const today = getTodayIso();
-  const [year, month] = monthStart.split('-').map(Number);
+  const [year, month] = weekStart.split('-').map(Number);
   const selectedMonth = new Date(year, month - 1, 1);
-
-  useEffect(() => {
-    if (!days.includes(today) || !todayRef.current || !scrollRef.current) return;
-    const container = scrollRef.current;
-    const column = todayRef.current;
-    const offsetLeft = column.offsetLeft - container.offsetLeft;
-    const centered = offsetLeft - container.clientWidth / 2 + column.clientWidth / 2;
-    container.scrollTo({ left: Math.max(0, centered), behavior: 'smooth' });
-  }, [monthStart, days, today]);
 
   return (
     <Box>
       <Group justify="space-between" align="center" mb="xs" wrap="nowrap">
-        <Tooltip label={t('portal.teacher.schedule.prevMonth')}>
-          <ActionIcon variant="light" size="lg" onClick={onPrevMonth} aria-label={t('portal.teacher.schedule.prevMonth')}>
+        <Tooltip label={t('portal.teacher.schedule.prevWeek')}>
+          <ActionIcon variant="light" size="lg" onClick={onPrevWeek} aria-label={t('portal.teacher.schedule.prevWeek')}>
             <IconChevronLeft size={20} />
           </ActionIcon>
         </Tooltip>
@@ -282,7 +262,7 @@ export function MonthlyTimeGrid({
                 style={{ borderRadius: 'var(--mantine-radius-sm)' }}
               >
                 <Text size="sm" fw={600}>
-                  {t('portal.teacher.schedule.monthLabel', { month: formatMonthLabel(monthStart) })}
+                  {t('portal.teacher.schedule.weekLabel', { week: formatWeekLabel(weekStart) })}
                 </Text>
               </UnstyledButton>
             </Popover.Target>
@@ -291,7 +271,7 @@ export function MonthlyTimeGrid({
                 value={selectedMonth}
                 onChange={(date) => {
                   if (date) {
-                    onMonthSelect(getMonthStart(date));
+                    onWeekSelect(getWeekStart(date));
                     setPickerOpen(false);
                   }
                 }}
@@ -300,8 +280,8 @@ export function MonthlyTimeGrid({
             </Popover.Dropdown>
           </Popover>
         </Box>
-        <Tooltip label={t('portal.teacher.schedule.nextMonth')}>
-          <ActionIcon variant="light" size="lg" onClick={onNextMonth} aria-label={t('portal.teacher.schedule.nextMonth')}>
+        <Tooltip label={t('portal.teacher.schedule.nextWeek')}>
+          <ActionIcon variant="light" size="lg" onClick={onNextWeek} aria-label={t('portal.teacher.schedule.nextWeek')}>
             <IconChevronRight size={20} />
           </ActionIcon>
         </Tooltip>
@@ -337,8 +317,7 @@ export function MonthlyTimeGrid({
           </Box>
         </Box>
         <Box
-          ref={scrollRef}
-          style={{ flex: 1, display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 8 }}
+          style={{ flex: 1, display: 'flex', gap: 4, paddingBottom: 8, minWidth: 0 }}
         >
           {days.map((date) => (
             <DayColumn
@@ -350,7 +329,6 @@ export function MonthlyTimeGrid({
               onDeleteSession={onDeleteSession}
               onSelectSession={onSelectSession}
               onCreateSlot={onCreateSlot}
-              columnRef={isToday(date) ? (el) => { todayRef.current = el; } : undefined}
             />
           ))}
         </Box>

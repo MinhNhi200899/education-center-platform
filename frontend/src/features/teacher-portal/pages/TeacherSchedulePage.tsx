@@ -9,8 +9,8 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { notifications } from '@mantine/notifications';
 import api from '@/lib/api';
@@ -29,17 +29,20 @@ import { DeleteSessionModal } from '../components/schedule/DeleteSessionModal';
 import type { CreateSlotDraft, TeacherScheduleSession } from '../components/schedule/schedule-utils';
 import {
   computeMoveFromSlot,
-  getMonthStart,
+  getDaysInWeek,
+  getTodayIso,
+  getWeekStart,
   isSameSlot,
+  monthsCoveringWeek,
   parseSlotId,
-  shiftMonth,
+  shiftWeek,
 } from '../components/schedule/schedule-utils';
 import { getSessionPhase, canDragSession } from '../components/schedule/session-phase';
 
 export function TeacherSchedulePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [monthStart, setMonthStart] = useState(() => getMonthStart());
+  const [weekStart, setWeekStart] = useState(() => getWeekStart());
   const [createOpen, setCreateOpen] = useState(false);
   const [createDefaults, setCreateDefaults] = useState<CreateSessionDefaults | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<TeacherScheduleSession | null>(null);
@@ -51,23 +54,40 @@ export function TeacherSchedulePage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const { data: scheduleData, isLoading } = useQuery({
-    queryKey: ['teacher-portal-schedule', monthStart],
-    queryFn: async () => {
-      const res = await api.get(`/teacher-portal/schedule?monthStart=${monthStart}`);
-      return res.data.data as {
-        monthStart: string;
-        monthEnd: string;
-        sessions: TeacherScheduleSession[];
-      };
-    },
+  const months = useMemo(() => monthsCoveringWeek(weekStart), [weekStart]);
+  const weekDays = useMemo(() => getDaysInWeek(weekStart), [weekStart]);
+
+  const scheduleQueries = useQueries({
+    queries: months.map((monthStart) => ({
+      queryKey: ['teacher-portal-schedule', monthStart],
+      queryFn: async () => {
+        const res = await api.get(`/teacher-portal/schedule?monthStart=${monthStart}`);
+        return res.data.data as {
+          monthStart: string;
+          monthEnd: string;
+          sessions: TeacherScheduleSession[];
+        };
+      },
+    })),
   });
 
-  useEffect(() => {
-    if (scheduleData?.sessions) {
-      setLocalSessions(scheduleData.sessions);
+  const isLoading = scheduleQueries.some((q) => q.isLoading);
+  const scheduleDataA = scheduleQueries[0]?.data;
+  const scheduleDataB = scheduleQueries[1]?.data;
+
+  const sessionsFromApi = useMemo(() => {
+    const byId = new Map<string, TeacherScheduleSession>();
+    for (const data of [scheduleDataA, scheduleDataB]) {
+      for (const s of data?.sessions ?? []) {
+        byId.set(s.id, s);
+      }
     }
-  }, [scheduleData]);
+    return [...byId.values()];
+  }, [scheduleDataA, scheduleDataB]);
+
+  useEffect(() => {
+    setLocalSessions(sessionsFromApi);
+  }, [sessionsFromApi]);
 
   const { data: classesData } = useQuery({
     queryKey: ['teacher-portal-classes'],
@@ -296,16 +316,16 @@ export function TeacherSchedulePage() {
             onDragCancel={handleDragCancel}
           >
             <MonthlyTimeGrid
-              monthStart={monthStart}
+              weekStart={weekStart}
               sessions={localSessions}
               savingIds={savingIds}
               isDraggingSession={!!activeSession}
               onDeleteSession={setDeleteTarget}
               onSelectSession={handleSelectSession}
               onCreateSlot={handleCreateSlot}
-              onPrevMonth={() => setMonthStart(shiftMonth(monthStart, -1))}
-              onNextMonth={() => setMonthStart(shiftMonth(monthStart, 1))}
-              onMonthSelect={setMonthStart}
+              onPrevWeek={() => setWeekStart(shiftWeek(weekStart, -1))}
+              onNextWeek={() => setWeekStart(shiftWeek(weekStart, 1))}
+              onWeekSelect={setWeekStart}
             />
             <DragOverlay dropAnimation={{ duration: 180 }}>
               {activeSession ? (
@@ -314,7 +334,9 @@ export function TeacherSchedulePage() {
             </DragOverlay>
           </DndContext>
         )}
-        {!isLoading && localSessions.length === 0 && classes.length > 0 && (
+        {!isLoading &&
+          !localSessions.some((s) => weekDays.includes(s.sessionDate)) &&
+          classes.length > 0 && (
           <Text c="dimmed" size="sm" mt="md" ta="center">
             {t('portal.teacher.schedule.empty')}
           </Text>
@@ -325,7 +347,7 @@ export function TeacherSchedulePage() {
         opened={createOpen}
         onClose={closeCreateModal}
         classes={classes}
-        defaultDate={createDefaults?.sessionDate ?? monthStart}
+        defaultDate={createDefaults?.sessionDate ?? getTodayIso()}
         defaults={createDefaults}
         loading={createMutation.isPending}
         onSubmit={(values) => createMutation.mutate(values)}

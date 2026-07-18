@@ -212,6 +212,19 @@ export class PortalService {
   async getInvoiceById(userId: string, invoiceId: string) {
     const studentId = await this.resolveStudentId(userId);
 
+    const teacherBankSelect = {
+      id: true,
+      fullName: true,
+      vietqrBankId: true,
+      accountNo: true,
+      accountName: true,
+    } as const;
+
+    const classTeacherInclude = {
+      orderBy: { role: 'asc' as const },
+      include: { teacher: { select: teacherBankSelect } },
+    };
+
     const invoice = await prisma.invoice.findFirst({
       where: { id: invoiceId, studentId },
       include: {
@@ -224,20 +237,7 @@ export class PortalService {
               select: {
                 id: true,
                 name: true,
-                teachers: {
-                  orderBy: { role: 'asc' },
-                  include: {
-                    teacher: {
-                      select: {
-                        id: true,
-                        fullName: true,
-                        vietqrBankId: true,
-                        accountNo: true,
-                        accountName: true,
-                      },
-                    },
-                  },
-                },
+                classTeachers: classTeacherInclude,
               },
             },
           },
@@ -264,14 +264,14 @@ export class PortalService {
     } | null = null;
 
     if (unpaid) {
-      const classTeachers = invoice.tuitionPlan.class?.teachers ?? [];
+      let className = invoice.tuitionPlan.class?.name ?? null;
+      const classTeachers = invoice.tuitionPlan.class?.classTeachers ?? [];
       let teacherWithBank =
-        classTeachers.find((ct) => ct.teacher.accountNo && ct.teacher.vietqrBankId)?.teacher ??
-        classTeachers[0]?.teacher ??
-        null;
+        classTeachers.find((ct) => ct.teacher.accountNo?.trim() && ct.teacher.vietqrBankId?.trim())
+          ?.teacher ?? null;
 
-      // Fallback: tuition plan may have no class — resolve via student's active enrollments
-      if (!teacherWithBank?.accountNo || !teacherWithBank?.vietqrBankId) {
+      // Fallback: resolve via student's active class enrollments
+      if (!teacherWithBank) {
         const enrollments = await prisma.enrollment.findMany({
           where: { studentId, status: EnrollmentStatus.active },
           select: {
@@ -279,38 +279,43 @@ export class PortalService {
               select: {
                 id: true,
                 name: true,
-                teachers: {
-                  orderBy: { role: 'asc' },
-                  include: {
-                    teacher: {
-                      select: {
-                        id: true,
-                        fullName: true,
-                        vietqrBankId: true,
-                        accountNo: true,
-                        accountName: true,
-                      },
-                    },
-                  },
-                },
+                classTeachers: classTeacherInclude,
               },
             },
           },
         });
 
         for (const enr of enrollments) {
-          const hit = enr.class.teachers.find(
-            (ct) => ct.teacher.accountNo && ct.teacher.vietqrBankId
+          const hit = enr.class.classTeachers.find(
+            (ct) => ct.teacher.accountNo?.trim() && ct.teacher.vietqrBankId?.trim()
           )?.teacher;
           if (hit) {
             teacherWithBank = hit;
-            if (!invoice.tuitionPlan.class) {
-              (invoice.tuitionPlan as { class?: { name: string } }).class = {
-                name: enr.class.name,
-              };
-            }
+            className = enr.class.name;
             break;
           }
+        }
+      }
+
+      // Last resort: any teacher in same center with bank who teaches this student
+      if (!teacherWithBank) {
+        const linked = await prisma.teacher.findFirst({
+          where: {
+            centerId: invoice.centerId,
+            accountNo: { not: null },
+            vietqrBankId: { not: null },
+            classTeachers: {
+              some: {
+                class: {
+                  enrollments: { some: { studentId, status: EnrollmentStatus.active } },
+                },
+              },
+            },
+          },
+          select: teacherBankSelect,
+        });
+        if (linked?.accountNo?.trim() && linked.vietqrBankId?.trim()) {
+          teacherWithBank = linked;
         }
       }
 
@@ -318,17 +323,17 @@ export class PortalService {
         (invoice.center.settings as Record<string, string> | null) ?? {};
 
       const bankAccount =
-        teacherWithBank?.accountNo ||
+        teacherWithBank?.accountNo?.trim() ||
         centerSettings.accountNo ||
         centerSettings.vietqrBankAccount ||
         '';
       const bankCode =
-        teacherWithBank?.vietqrBankId ||
+        teacherWithBank?.vietqrBankId?.trim() ||
         centerSettings.vietqrBankId ||
         centerSettings.vietqrBankCode ||
         '';
       const receiverName =
-        teacherWithBank?.accountName ||
+        teacherWithBank?.accountName?.trim() ||
         centerSettings.accountName ||
         centerSettings.vietqrAccountName ||
         teacherWithBank?.fullName ||
@@ -352,7 +357,7 @@ export class PortalService {
           receiverAccount: vietqr.receiverAccount,
           description: vietqr.description,
           teacherName: teacherWithBank?.fullName ?? null,
-          className: invoice.tuitionPlan.class?.name ?? null,
+          className,
         };
       }
     }

@@ -33,7 +33,9 @@ export interface BulkAttendanceDTO {
 export interface CreateAttendanceSessionDTO {
   sessionId: string;
   sessionNote?: string;
-  attendanceScreenshotUrl: string;
+  /** Offline teaching — screenshot not required */
+  isOffline?: boolean;
+  attendanceScreenshotUrl?: string;
   defaultStatus?: AttendanceStatus; // Default status for all students (e.g., 'present')
   records?: Array<{
     studentId: string;

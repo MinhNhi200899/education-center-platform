@@ -47,27 +47,38 @@ export const bulkMarkAttendanceSchema = z.object({
  * POST /api/v1/attendance/session
  */
 export const createAttendanceSessionSchema = z.object({
-  body: z.object({
-    sessionId: z.string().uuid('Invalid session ID'),
-    sessionNote: z.string().max(10000).optional(),
-    attendanceScreenshotUrl: z.string().url('Attendance screenshot is required'),
-    defaultStatus: z
-      .nativeEnum(AttendanceStatus, {
-        errorMap: () => ({ message: 'Status must be: present, absent, late, or excused' }),
-      })
-      .optional(),
-    records: z
-      .array(
-        z.object({
-          studentId: z.string().uuid('Invalid student ID'),
-          status: z.nativeEnum(AttendanceStatus, {
-            errorMap: () => ({ message: 'Status must be: present, absent, late, or excused' }),
-          }),
-          reason: z.string().max(500, 'Reason must be 500 characters or less').optional(),
+  body: z
+    .object({
+      sessionId: z.string().uuid('Invalid session ID'),
+      sessionNote: z.string().max(10000).optional(),
+      isOffline: z.boolean().optional().default(false),
+      attendanceScreenshotUrl: z.string().url('Invalid attendance screenshot URL').optional(),
+      defaultStatus: z
+        .nativeEnum(AttendanceStatus, {
+          errorMap: () => ({ message: 'Status must be: present, absent, late, or excused' }),
         })
-      )
-      .optional(),
-  }),
+        .optional(),
+      records: z
+        .array(
+          z.object({
+            studentId: z.string().uuid('Invalid student ID'),
+            status: z.nativeEnum(AttendanceStatus, {
+              errorMap: () => ({ message: 'Status must be: present, absent, late, or excused' }),
+            }),
+            reason: z.string().max(500, 'Reason must be 500 characters or less').optional(),
+          })
+        )
+        .optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (!data.isOffline && !data.attendanceScreenshotUrl?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Attendance screenshot is required for online sessions',
+          path: ['attendanceScreenshotUrl'],
+        });
+      }
+    }),
 });
 
 /**

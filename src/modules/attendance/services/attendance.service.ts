@@ -237,7 +237,18 @@ export class AttendanceService {
     data: CreateAttendanceSessionDTO,
     recordedBy: string
   ): Promise<MarkAttendanceResult> {
-    const { sessionId, sessionNote, attendanceScreenshotUrl, defaultStatus = AttendanceStatus.present, records } = data;
+    const {
+      sessionId,
+      sessionNote,
+      isOffline = false,
+      attendanceScreenshotUrl,
+      defaultStatus = AttendanceStatus.present,
+      records,
+    } = data;
+
+    if (!isOffline && !attendanceScreenshotUrl?.trim()) {
+      throw new BadRequestException('Attendance screenshot is required for online sessions');
+    }
 
     // Verify session exists and get enrollments
     const session = await this.prisma.session.findUnique({
@@ -321,6 +332,7 @@ export class AttendanceService {
       status?: SessionStatus;
       notes?: string;
       attendanceScreenshotUrl?: string;
+      classroom?: string;
     } = {};
     if (session.status === SessionStatus.scheduled) {
       sessionUpdate.status = SessionStatus.completed;
@@ -328,8 +340,11 @@ export class AttendanceService {
     if (sessionNote?.trim()) {
       sessionUpdate.notes = sessionNote.trim();
     }
-    if (attendanceScreenshotUrl?.trim()) {
+    if (!isOffline && attendanceScreenshotUrl?.trim()) {
       sessionUpdate.attendanceScreenshotUrl = attendanceScreenshotUrl.trim();
+    }
+    if (isOffline && !/offline/i.test(session.classroom ?? '')) {
+      sessionUpdate.classroom = 'Offline';
     }
     if (Object.keys(sessionUpdate).length > 0) {
       await this.prisma.session.update({

@@ -14,6 +14,7 @@ export interface TeacherScheduleSession {
   status: string;
   sessionType?: string;
   attendanceMarked?: boolean;
+  studentNames?: string[];
 }
 
 export function getMonthStart(date = new Date()): string {

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useRef } from 'react';
-import { Box, Text, Badge, ActionIcon, Group, Loader } from '@mantine/core';
+import { Box, Text, Badge, ActionIcon, Group, Loader, Tooltip, Stack } from '@mantine/core';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { IconTrash } from '@tabler/icons-react';
@@ -31,6 +31,7 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
 
   const attendanceMarked = session.attendanceMarked === true;
   const displayColor = attendanceMarked ? ATTENDANCE_MARKED_COLOR : phaseColor;
+  const studentNames = session.studentNames ?? [];
 
   const top = sessionTopPx(session.startTime);
   const height = sessionHeightPx(session.startTime, session.endTime);
@@ -77,7 +78,23 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
     badgeColor = displayColor;
   }
 
-  return (
+  const tooltipLabel =
+    studentNames.length > 0 ? (
+      <Stack gap={2}>
+        <Text size="xs" fw={600}>
+          {t('portal.teacher.schedule.studentsTooltip', { count: studentNames.length })}
+        </Text>
+        {studentNames.map((name) => (
+          <Text key={name} size="xs">
+            {name}
+          </Text>
+        ))}
+      </Stack>
+    ) : (
+      t('portal.teacher.schedule.noStudentsTooltip')
+    );
+
+  const block = (
     <Box
       ref={isOverlay ? undefined : setNodeRef}
       data-session-block
@@ -140,5 +157,21 @@ export function SessionBlock({ session, isSaving, isOverlay, onDelete, onSelect 
         </Badge>
       )}
     </Box>
+  );
+
+  if (isOverlay || isDragging) return block;
+
+  return (
+    <Tooltip
+      label={tooltipLabel}
+      withArrow
+      multiline
+      openDelay={350}
+      position="right"
+      maw={240}
+      events={{ hover: true, focus: false, touch: true }}
+    >
+      {block}
+    </Tooltip>
   );
 }

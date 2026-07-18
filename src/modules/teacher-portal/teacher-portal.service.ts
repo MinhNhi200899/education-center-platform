@@ -473,6 +473,28 @@ export class TeacherPortalService {
       },
     });
 
+    const sessionClassIds = [...new Set(sessions.map((s) => s.classId))];
+    const enrollments =
+      sessionClassIds.length === 0
+        ? []
+        : await prisma.enrollment.findMany({
+            where: {
+              classId: { in: sessionClassIds },
+              status: 'active',
+            },
+            include: {
+              student: { select: { fullName: true } },
+            },
+            orderBy: { student: { fullName: 'asc' } },
+          });
+
+    const studentsByClass = new Map<string, string[]>();
+    for (const e of enrollments) {
+      const list = studentsByClass.get(e.classId) ?? [];
+      list.push(e.student.fullName);
+      studentsByClass.set(e.classId, list);
+    }
+
     return {
       monthStart: start.toISOString().split('T')[0],
       monthEnd: end.toISOString().split('T')[0],
@@ -487,6 +509,7 @@ export class TeacherPortalService {
         status: s.status,
         sessionType: s.sessionType,
         attendanceMarked: s._count.attendanceRecords > 0,
+        studentNames: studentsByClass.get(s.classId) ?? [],
       })),
     };
   }

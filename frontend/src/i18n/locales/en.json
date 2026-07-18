@@ -1066,6 +1066,8 @@
         "weekLabel": "{{week}}",
         "loading": "Loading...",
         "empty": "No teaching sessions this month.",
+        "studentsTooltip": "Students ({{count}})",
+        "noStudentsTooltip": "No students in this class",
         "room": "Room: {{room}}",
         "addSession": "Add session",
         "dragHint": "Only upcoming sessions (blue) can be dragged — past or in-progress sessions stay fixed.",

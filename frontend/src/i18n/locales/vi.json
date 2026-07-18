@@ -1070,6 +1070,8 @@
         "weekLabel": "{{week}}",
         "loading": "Đang tải...",
         "empty": "Không có buổi dạy trong tuần này.",
+        "studentsTooltip": "Học viên ({{count}})",
+        "noStudentsTooltip": "Lớp chưa có học viên",
         "room": "Phòng: {{room}}",
         "addSession": "Thêm buổi dạy",
         "dragHint": "Chỉ kéo thả buổi Sắp học (xanh dương) — buổi đã/đang học không di chuyển được.",

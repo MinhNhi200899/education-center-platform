@@ -1,96 +1,74 @@
-import { Stack, Title, Text, Paper, Group, Button, Badge } from '@mantine/core';
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { Stack, Title, Text, Paper, Loader, Center } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
-
-function getMonday(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
-}
-
-function shiftWeek(weekStart: string, delta: number): string {
-  return dayjs(`${weekStart}T12:00:00`).add(delta * 7, 'day').format('YYYY-MM-DD');
-}
+import {
+  getMonthStart,
+  shiftMonth,
+} from '@/features/teacher-portal/components/schedule/schedule-utils';
+import { StudentMonthlyTimeGrid } from '../components/schedule/StudentMonthlyTimeGrid';
+import { SessionHomeworkModal } from '../components/schedule/SessionHomeworkModal';
+import type { StudentScheduleSession } from '../components/schedule/types';
 
 export function StudentSchedulePage() {
   const { t } = useTranslation();
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
+  const [monthStart, setMonthStart] = useState(() => getMonthStart());
+  const [selected, setSelected] = useState<StudentScheduleSession | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['portal-schedule', weekStart],
+    queryKey: ['portal-schedule', monthStart],
     queryFn: async () => {
-      const res = await api.get(`/portal/schedule?weekStart=${weekStart}`);
-      return res.data.data;
+      const res = await api.get(`/portal/schedule?monthStart=${monthStart}`);
+      return res.data.data as {
+        monthStart: string;
+        monthEnd: string;
+        sessions: StudentScheduleSession[];
+      };
     },
   });
 
-  const weekLabel = `${dayjs(weekStart).format('DD/MM')} – ${dayjs(weekStart).add(6, 'day').format('DD/MM/YYYY')}`;
+  const sessions = data?.sessions ?? [];
 
   return (
     <Stack gap="lg">
-      <Title order={2}>{t('portal.student.schedule.title')}</Title>
-      <Text c="dimmed" size="sm">
-        {t('portal.student.schedule.subtitle')}
-      </Text>
-
-      <Group>
-        <Button
-          variant="default"
-          leftSection={<IconChevronLeft size={16} />}
-          onClick={() => setWeekStart(shiftWeek(weekStart, -1))}
-        >
-          {t('portal.student.schedule.prev')}
-        </Button>
-        <Text fw={500}>{weekLabel}</Text>
-        <Button
-          variant="default"
-          rightSection={<IconChevronRight size={16} />}
-          onClick={() => setWeekStart(shiftWeek(weekStart, 1))}
-        >
-          {t('portal.student.schedule.next')}
-        </Button>
-      </Group>
+      <div>
+        <Title order={2}>{t('portal.student.schedule.title')}</Title>
+        <Text c="dimmed" size="sm">
+          {t('portal.student.schedule.subtitle')}
+        </Text>
+        <Text c="dimmed" size="xs" mt={4}>
+          {t('portal.student.schedule.clickHint')}
+        </Text>
+      </div>
 
       <Paper withBorder p="md" radius="md">
         {isLoading ? (
-          <Text c="dimmed">{t('portal.student.schedule.loading')}</Text>
-        ) : (data?.sessions?.length ?? 0) === 0 ? (
-          <Text c="dimmed">{t('portal.student.schedule.empty')}</Text>
+          <Center py="xl">
+            <Loader size="sm" />
+          </Center>
         ) : (
-          <Stack gap="sm">
-            {data.sessions.map((s: {
-              id: string;
-              className: string;
-              sessionDate: string;
-              startTime: string;
-              endTime: string;
-              classroom?: string;
-              status: string;
-            }) => (
-              <Group key={s.id} justify="space-between" align="flex-start">
-                <div>
-                  <Text fw={600}>{s.className}</Text>
-                  <Text size="sm" c="dimmed">
-                    {dayjs(s.sessionDate).format('dddd, DD/MM/YYYY')} · {s.startTime}–{s.endTime}
-                  </Text>
-                  {s.classroom && (
-                    <Text size="sm" c="dimmed">
-                      {t('portal.student.schedule.room', { room: s.classroom })}
-                    </Text>
-                  )}
-                </div>
-                <Badge variant="light">{s.status}</Badge>
-              </Group>
-            ))}
-          </Stack>
+          <StudentMonthlyTimeGrid
+            monthStart={monthStart}
+            sessions={sessions}
+            onSelectSession={setSelected}
+            onPrevMonth={() => setMonthStart((m) => shiftMonth(m, -1))}
+            onNextMonth={() => setMonthStart((m) => shiftMonth(m, 1))}
+            onMonthSelect={setMonthStart}
+          />
+        )}
+        {!isLoading && sessions.length === 0 && (
+          <Text c="dimmed" size="sm" ta="center" mt="md">
+            {t('portal.student.schedule.emptyMonth')}
+          </Text>
         )}
       </Paper>
+
+      <SessionHomeworkModal
+        session={selected}
+        opened={!!selected}
+        onClose={() => setSelected(null)}
+      />
     </Stack>
   );
 }

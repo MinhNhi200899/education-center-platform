@@ -932,10 +932,29 @@
         "subtitle": "Các buổi học thuộc lớp bạn đang theo học",
         "prev": "Tuần trước",
         "next": "Tuần sau",
+        "prevMonth": "Tháng trước",
+        "nextMonth": "Tháng sau",
+        "monthLabel": "Tháng {{month}}",
+        "today": "Hôm nay",
         "thisWeek": "Tuần này",
         "loading": "Đang tải...",
         "empty": "Không có buổi học trong tuần này.",
-        "room": "Phòng: {{room}}"
+        "emptyMonth": "Không có buổi học trong tháng này.",
+        "room": "Phòng: {{room}}",
+        "clickHint": "Bấm vào buổi học để xem bài tập và tài liệu.",
+        "hasHomework": "Có bài tập",
+        "phase": {
+          "upcoming": "Sắp tới",
+          "inProgress": "Đang học",
+          "ended": "Đã học",
+          "cancelled": "Đã hủy"
+        },
+        "homeworkModal": {
+          "title": "Bài tập buổi học",
+          "content": "Nội dung",
+          "files": "Tệp đính kèm",
+          "empty": "Buổi này chưa có bài tập được giao."
+        }
       },
       "tuition": {
         "title": "Học phí & thông báo đóng tiền",

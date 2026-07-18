@@ -932,10 +932,29 @@
         "subtitle": "Sessions for the class you're enrolled in",
         "prev": "Previous week",
         "next": "Next week",
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month",
+        "monthLabel": "Month {{month}}",
+        "today": "Today",
         "thisWeek": "This week",
         "loading": "Loading...",
         "empty": "No sessions this week.",
-        "room": "Room: {{room}}"
+        "emptyMonth": "No sessions this month.",
+        "room": "Room: {{room}}",
+        "clickHint": "Click a session to view homework and materials.",
+        "hasHomework": "Has homework",
+        "phase": {
+          "upcoming": "Upcoming",
+          "inProgress": "In progress",
+          "ended": "Ended",
+          "cancelled": "Cancelled"
+        },
+        "homeworkModal": {
+          "title": "Session homework",
+          "content": "Content",
+          "files": "Attachments",
+          "empty": "No homework has been assigned for this session yet."
+        }
       },
       "tuition": {
         "title": "Tuition & Payment Notices",

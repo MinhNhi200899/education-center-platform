@@ -129,11 +129,18 @@ export class PortalService {
     };
   }
 
-  async getSchedule(userId: string, weekStart: string) {
+  async getSchedule(userId: string, monthStart: string) {
     const studentId = await this.resolveStudentId(userId);
-    const start = new Date(`${weekStart}T00:00:00`);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(monthStart);
+    if (!match) {
+      return { monthStart, monthEnd: monthStart, sessions: [] };
+    }
+
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const start = new Date(Date.UTC(y, m - 1, 1));
+    const end = new Date(Date.UTC(y, m, 0));
 
     const enrollments = await prisma.enrollment.findMany({
       where: { studentId, status: EnrollmentStatus.active },
@@ -142,7 +149,11 @@ export class PortalService {
     const classIds = enrollments.map((e) => e.classId);
 
     if (classIds.length === 0) {
-      return { weekStart, sessions: [] };
+      return {
+        monthStart: start.toISOString().split('T')[0],
+        monthEnd: end.toISOString().split('T')[0],
+        sessions: [],
+      };
     }
 
     const sessions = await prisma.session.findMany({
@@ -153,21 +164,41 @@ export class PortalService {
       orderBy: [{ sessionDate: 'asc' }, { startTime: 'asc' }],
       include: {
         class: { select: { id: true, name: true } },
+        materials: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            fileUrl: true,
+            fileName: true,
+            fileType: true,
+            fileSize: true,
+          },
+        },
       },
     });
 
     return {
-      weekStart,
+      monthStart: start.toISOString().split('T')[0],
+      monthEnd: end.toISOString().split('T')[0],
       sessions: sessions.map((s) => ({
         id: s.id,
         classId: s.classId,
         className: s.class.name,
-        sessionDate: s.sessionDate,
+        sessionDate: s.sessionDate.toISOString().split('T')[0],
         startTime: s.startTime,
         endTime: s.endTime,
         classroom: s.classroom,
         status: s.status,
         sessionType: s.sessionType,
+        notes: s.notes?.trim() || null,
+        materials: s.materials.map((mat) => ({
+          id: mat.id,
+          fileUrl: mat.fileUrl,
+          fileName: mat.fileName,
+          fileType: mat.fileType,
+          fileSize: mat.fileSize,
+        })),
+        hasHomework: Boolean(s.notes?.trim()) || s.materials.length > 0,
       })),
     };
   }

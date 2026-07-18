@@ -963,9 +963,9 @@
           "yourSubmission": "Bài làm của bạn",
           "noteLabel": "Ghi chú / nội dung nộp",
           "notePlaceholder": "Viết câu trả lời hoặc ghi chú kèm file...",
-          "fileLabel": "Tệp bài làm (PDF / Word / Excel)",
-          "filePlaceholder": "Chọn file để nộp",
-          "submitHint": "Có thể nộp hoặc cập nhật trước khi buổi học kết thúc.",
+          "fileLabel": "Tệp bài làm (Word / ảnh / PDF)",
+          "filePlaceholder": "Chọn .doc, .docx, .jpg, .png, .pdf...",
+          "submitHint": "Có thể nộp hoặc cập nhật trước khi buổi học kết thúc. File lưu trên Cloudinary (Word + ảnh).",
           "submit": "Nộp bài",
           "updateSubmit": "Cập nhật bài nộp",
           "submitSuccess": "Đã nộp bài thành công",
@@ -1012,7 +1012,11 @@
         "transferContent": "Nội dung chuyển khoản",
         "noQr": "Chưa cấu hình tài khoản nhận tiền của giáo viên. Liên hệ trung tâm/giáo viên.",
         "paidTitle": "Đã thanh toán",
-        "paidMessage": "Phiếu thu này đã được thanh toán thành công."
+        "paidMessage": "Phiếu thu này đã được thanh toán thành công.",
+        "successPopupTitle": "Thanh toán thành công!",
+        "successPopupMessage": "Bạn đã thanh toán {{amount}} cho phiếu {{number}}. Cảm ơn bạn!",
+        "successStay": "Đóng",
+        "successBack": "Về danh sách học phí"
       }
     },
     "teacher": {

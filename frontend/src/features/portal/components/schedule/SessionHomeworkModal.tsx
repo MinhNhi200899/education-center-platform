@@ -286,7 +286,7 @@ export function SessionHomeworkModal({ session, opened, onClose }: Props) {
                     label={t('portal.student.schedule.homeworkModal.fileLabel')}
                     placeholder={t('portal.student.schedule.homeworkModal.filePlaceholder')}
                     leftSection={<IconUpload size={16} />}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
                     value={file}
                     onChange={setFile}
                     clearable

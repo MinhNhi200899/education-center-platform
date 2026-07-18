@@ -467,10 +467,12 @@ export class PortalService {
   }
 
   private sessionEndAt(sessionDate: Date, endTime: string): Date {
+    // Session times are Vietnam local (UTC+7), independent of server timezone (Render = UTC).
     const dateStr = sessionDate.toISOString().split('T')[0];
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const [h, min] = endTime.split(':').map(Number);
-    return new Date(y, m - 1, d, h, min, 0, 0);
+    const [hh, mm] = endTime.split(':');
+    const hour = String(Number(hh)).padStart(2, '0');
+    const minute = String(Number(mm || 0)).padStart(2, '0');
+    return new Date(`${dateStr}T${hour}:${minute}:00+07:00`);
   }
 
   private async assertStudentInSession(studentId: string, sessionId: string) {
@@ -581,7 +583,8 @@ export class PortalService {
       uploaded = await uploadHomeworkFile(
         input.file.buffer,
         input.file.originalname,
-        input.baseUrl
+        input.baseUrl,
+        { kind: 'submission' }
       );
     }
 

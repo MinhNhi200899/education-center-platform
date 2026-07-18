@@ -1,8 +1,11 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { BadRequestException } from '../types/error.types';
 
-const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
+const DOCUMENT_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
 const MAX_BYTES = 50 * 1024 * 1024;
+
+export type HomeworkUploadKind = 'material' | 'submission';
 
 function isConfigured(): boolean {
   return Boolean(
@@ -21,6 +24,13 @@ function getExtension(filename: string): string {
   return parts.length > 1 ? parts[parts.length - 1] : '';
 }
 
+function allowedExtensions(kind: HomeworkUploadKind): Set<string> {
+  if (kind === 'submission') {
+    return new Set([...DOCUMENT_EXTENSIONS, ...IMAGE_EXTENSIONS]);
+  }
+  return DOCUMENT_EXTENSIONS;
+}
+
 function inferMimeType(ext: string): string {
   switch (ext) {
     case 'pdf':
@@ -33,9 +43,22 @@ function inferMimeType(ext: string): string {
       return 'application/vnd.ms-excel';
     case 'xlsx':
       return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
     default:
       return 'application/octet-stream';
   }
+}
+
+function isImageExt(ext: string): boolean {
+  return IMAGE_EXTENSIONS.has(ext);
 }
 
 export interface UploadedDocument {
@@ -48,7 +71,8 @@ export interface UploadedDocument {
 
 export async function uploadHomeworkDocument(
   buffer: Buffer,
-  originalName: string
+  originalName: string,
+  kind: HomeworkUploadKind = 'material'
 ): Promise<UploadedDocument> {
   if (!isConfigured()) {
     throw new BadRequestException(
@@ -62,9 +86,11 @@ export async function uploadHomeworkDocument(
   }
 
   const ext = getExtension(originalName);
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
+  if (!allowedExtensions(kind).has(ext)) {
     throw new BadRequestException(
-      'Only PDF, Word (.doc/.docx), and Excel (.xls/.xlsx) files are allowed',
+      kind === 'submission'
+        ? 'Only PDF, Word (.doc/.docx), Excel, and images (jpg/png/webp/gif) are allowed'
+        : 'Only PDF, Word (.doc/.docx), and Excel (.xls/.xlsx) files are allowed',
       'INVALID_FILE_TYPE'
     );
   }
@@ -76,14 +102,16 @@ export async function uploadHomeworkDocument(
   });
 
   const baseName = originalName.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_').slice(0, 80);
+  const asImage = isImageExt(ext);
 
   const result = await new Promise<{ secure_url: string; public_id?: string }>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        resource_type: 'raw',
-        folder: 'homework',
+        // Word/PDF/Excel = raw; images = image (optimized delivery)
+        resource_type: asImage ? 'image' : 'raw',
+        folder: kind === 'submission' ? 'homework-submissions' : 'homework',
         public_id: `${baseName}_${Date.now()}`,
-        format: ext,
+        ...(asImage ? {} : { format: ext }),
       },
       (error, uploadResult) => {
         if (error || !uploadResult) reject(error ?? new Error('Upload failed'));
@@ -103,7 +131,7 @@ export async function uploadHomeworkDocument(
 }
 
 export function getViewerUrl(fileUrl: string, fileType: string): string {
-  if (fileType === 'application/pdf') {
+  if (fileType === 'application/pdf' || fileType.startsWith('image/')) {
     return fileUrl;
   }
   return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;

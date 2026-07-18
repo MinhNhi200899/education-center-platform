@@ -11,6 +11,7 @@ import {
 import {
   uploadHomeworkDocument,
   isCloudinaryConfigured,
+  type HomeworkUploadKind,
 } from './cloudinary.service';
 import { BadRequestException } from '../types/error.types';
 import { logger } from './logger.service';
@@ -49,40 +50,83 @@ function toUploadError(error: unknown, provider: string): BadRequestException {
   );
 }
 
+export interface UploadHomeworkOptions {
+  /** material = GV giao bài; submission = HS nộp bài (ưu tiên Cloudinary, cho phép ảnh) */
+  kind?: HomeworkUploadKind;
+}
+
+/**
+ * Upload homework file.
+ * - material: Drive first, then Cloudinary, then local (dev)
+ * - submission: Cloudinary first (recommended for Word raw + images), then Drive, then local (dev)
+ */
 export async function uploadHomeworkFile(
   buffer: Buffer,
   originalName: string,
-  baseUrl: string
+  baseUrl: string,
+  options: UploadHomeworkOptions = {}
 ): Promise<HomeworkUploadedFile> {
+  const kind: HomeworkUploadKind = options.kind ?? 'material';
+
   if (!buffer.length) {
     throw new BadRequestException('Uploaded file is empty', 'EMPTY_FILE');
   }
 
-  if (isDriveUploadReady()) {
+  const tryCloudinary = async () => {
+    if (!isCloudinaryConfigured()) return null;
+    return toCloudinaryResult(await uploadHomeworkDocument(buffer, originalName, kind));
+  };
+
+  const tryDrive = async () => {
+    if (!isDriveUploadReady()) return null;
+    return uploadHomeworkToDrive(buffer, originalName);
+  };
+
+  if (kind === 'submission') {
     try {
-      return await uploadHomeworkToDrive(buffer, originalName);
+      const cloudinary = await tryCloudinary();
+      if (cloudinary) return cloudinary;
+    } catch (error) {
+      logger.error('Cloudinary submission upload failed', {
+        error: error instanceof Error ? error.message : error,
+        originalName,
+      });
+      try {
+        const drive = await tryDrive();
+        if (drive) return drive;
+      } catch (driveError) {
+        throw toUploadError(driveError, 'Google Drive');
+      }
+      throw toUploadError(error, 'Cloudinary');
+    }
+
+    try {
+      const drive = await tryDrive();
+      if (drive) return drive;
+    } catch (error) {
+      throw toUploadError(error, 'Google Drive');
+    }
+  } else {
+    try {
+      const drive = await tryDrive();
+      if (drive) return drive;
     } catch (error) {
       logger.error('Google Drive homework upload failed', {
         error: error instanceof Error ? error.message : error,
         originalName,
       });
-
-      if (isCloudinaryConfigured()) {
-        logger.info('Falling back to Cloudinary for homework upload');
-        try {
-          return toCloudinaryResult(await uploadHomeworkDocument(buffer, originalName));
-        } catch (cloudinaryError) {
-          throw toUploadError(cloudinaryError, 'Cloudinary');
-        }
+      try {
+        const cloudinary = await tryCloudinary();
+        if (cloudinary) return cloudinary;
+      } catch (cloudinaryError) {
+        throw toUploadError(cloudinaryError, 'Cloudinary');
       }
-
       throw toUploadError(error, 'Google Drive');
     }
-  }
 
-  if (isCloudinaryConfigured()) {
     try {
-      return toCloudinaryResult(await uploadHomeworkDocument(buffer, originalName));
+      const cloudinary = await tryCloudinary();
+      if (cloudinary) return cloudinary;
     } catch (error) {
       throw toUploadError(error, 'Cloudinary');
     }
@@ -93,7 +137,7 @@ export async function uploadHomeworkFile(
   }
 
   throw new BadRequestException(
-    'File storage is not configured. Set Google Drive OAuth credentials or Cloudinary env vars on the server.',
+    'File storage is not configured. Set Cloudinary env vars (recommended for student submissions) or Google Drive OAuth credentials.',
     'STORAGE_NOT_CONFIGURED'
   );
 }

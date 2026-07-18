@@ -2,7 +2,9 @@ import { Readable } from 'stream';
 import { google, drive_v3 } from 'googleapis';
 import { BadRequestException } from '../types/error.types';
 
-const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
+const DOCUMENT_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx']);
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+const ALLOWED_EXTENSIONS = new Set([...DOCUMENT_EXTENSIONS, ...IMAGE_EXTENSIONS]);
 const MAX_BYTES = 50 * 1024 * 1024;
 
 export interface DriveUploadedFile {
@@ -32,6 +34,15 @@ function inferMimeType(ext: string): string {
       return 'application/vnd.ms-excel';
     case 'xlsx':
       return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
     default:
       return 'application/octet-stream';
   }
@@ -180,7 +191,7 @@ export async function uploadHomeworkToDrive(
   const ext = getExtension(originalName);
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     throw new BadRequestException(
-      'Only PDF, Word (.doc/.docx), and Excel (.xls/.xlsx) files are allowed',
+      'Only PDF, Word (.doc/.docx), Excel, and images (jpg/png/webp/gif) are allowed',
       'INVALID_FILE_TYPE'
     );
   }

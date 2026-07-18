@@ -265,10 +265,54 @@ export class PortalService {
 
     if (unpaid) {
       const classTeachers = invoice.tuitionPlan.class?.teachers ?? [];
-      const teacherWithBank =
+      let teacherWithBank =
         classTeachers.find((ct) => ct.teacher.accountNo && ct.teacher.vietqrBankId)?.teacher ??
         classTeachers[0]?.teacher ??
         null;
+
+      // Fallback: tuition plan may have no class — resolve via student's active enrollments
+      if (!teacherWithBank?.accountNo || !teacherWithBank?.vietqrBankId) {
+        const enrollments = await prisma.enrollment.findMany({
+          where: { studentId, status: EnrollmentStatus.active },
+          select: {
+            class: {
+              select: {
+                id: true,
+                name: true,
+                teachers: {
+                  orderBy: { role: 'asc' },
+                  include: {
+                    teacher: {
+                      select: {
+                        id: true,
+                        fullName: true,
+                        vietqrBankId: true,
+                        accountNo: true,
+                        accountName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        for (const enr of enrollments) {
+          const hit = enr.class.teachers.find(
+            (ct) => ct.teacher.accountNo && ct.teacher.vietqrBankId
+          )?.teacher;
+          if (hit) {
+            teacherWithBank = hit;
+            if (!invoice.tuitionPlan.class) {
+              (invoice.tuitionPlan as { class?: { name: string } }).class = {
+                name: enr.class.name,
+              };
+            }
+            break;
+          }
+        }
+      }
 
       const centerSettings =
         (invoice.center.settings as Record<string, string> | null) ?? {};
